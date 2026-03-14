@@ -1,23 +1,37 @@
--- 1. Profiles table
+-- 1. Profiles table with KYC and Jurisdiction
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   full_name TEXT,
   role TEXT CHECK (role IN ('client', 'contractor')),
+  country TEXT,
+  company_type TEXT,
+  kyc_status TEXT DEFAULT 'VERIFIED', -- Simulated KYC
   wallet_balance DECIMAL(15, 2) DEFAULT 0.00,
+  jurisdiction_metadata JSONB DEFAULT '{}',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- 2. Agreements table
+-- 2. Agreements table with Lifecycle and AI Analysis
 CREATE TABLE IF NOT EXISTS public.agreements (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
   description TEXT,
+  deliverables TEXT,
   amount DECIMAL(15, 2) NOT NULL,
   deadline DATE,
   client_id UUID REFERENCES public.profiles(id),
   contractor_id UUID REFERENCES public.profiles(id),
-  status TEXT DEFAULT 'PENDING_ACCEPTANCE',
+  status TEXT DEFAULT 'DRAFT',
+  trigger_type TEXT DEFAULT 'manual_review',
   deliverable_url TEXT,
+  submitted_at TIMESTAMP WITH TIME ZONE,
+  platform_fee DECIMAL(15, 2),
+  tax_reserve DECIMAL(15, 2),
+  contractor_amount DECIMAL(15, 2),
+  ai_score INTEGER,
+  ai_summary TEXT,
+  receipt_url TEXT,
+  rejection_reason TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
@@ -25,12 +39,15 @@ CREATE TABLE IF NOT EXISTS public.agreements (
 -- 3. Temporarily disable foreign key constraints from old auth.users if they exist
 ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_id_fkey;
 
--- 4. Insert our Dummy Profiles so they exist in the Database
-INSERT INTO public.profiles (id, full_name, role, wallet_balance)
+-- 4. Insert our Dummy Profiles with Jurisdiction Metadata
+INSERT INTO public.profiles (id, full_name, role, country, company_type, kyc_status, wallet_balance, jurisdiction_metadata)
 VALUES 
-  ('11111111-1111-1111-1111-111111111111', 'Acme Corp (Client)', 'client', 50000.00),
-  ('22222222-2222-2222-2222-222222222222', 'Jane Doe (Contractor)', 'contractor', 150.00)
-ON CONFLICT (id) DO NOTHING;
+  ('11111111-1111-1111-1111-111111111111', 'Acme Corp (Client)', 'client', 'USA', 'LLC', 'VERIFIED', 50000.00, '{"tax_regime": "US-Resident", "default_withholding": 0}'),
+  ('22222222-2222-2222-2222-222222222222', 'Jane Doe (Contractor)', 'contractor', 'India', 'Individual', 'VERIFIED', 150.00, '{"tax_regime": "IN-Resident", "treaty_benefit": true}')
+ON CONFLICT (id) DO UPDATE SET 
+  country = EXCLUDED.country,
+  kyc_status = EXCLUDED.kyc_status,
+  jurisdiction_metadata = EXCLUDED.jurisdiction_metadata;
 
 -- 5. Completely Relax RLS so Dummy Auth works cleanly (Hackathon mode)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -55,12 +72,12 @@ DROP POLICY IF EXISTS "Participants can update agreements" ON public.agreements;
 CREATE POLICY "Participants can update agreements" ON public.agreements FOR UPDATE USING (true);
 
 -- 6. ENABLE REAL-TIME TRACKING FOR THE FRONTEND
--- (This tells Supabase to send instant websocket updates to your React app)
 BEGIN;
   DROP PUBLICATION IF EXISTS supabase_realtime;
   CREATE PUBLICATION supabase_realtime;
 COMMIT;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.agreements;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;
+
 
 

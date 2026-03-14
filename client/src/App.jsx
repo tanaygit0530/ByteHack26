@@ -26,11 +26,12 @@ function App() {
     if (storedUser) {
       const user = JSON.parse(storedUser);
       profileSubscription = supabase
-        .channel('public:profiles')
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` }, (payload) => {
-          setProfile(payload.new);
-          // Also update local storage so hard refreshes have the latest balance immediately
-          localStorage.setItem('dummy_user', JSON.stringify(payload.new));
+        .channel('public:profiles_update')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, (payload) => {
+          if (payload.new && payload.new.id === user.id) {
+            setProfile(payload.new);
+            localStorage.setItem('dummy_user', JSON.stringify(payload.new));
+          }
         })
         .subscribe();
     }
@@ -80,7 +81,7 @@ function App() {
           <Routes>
             <Route 
               path="/" 
-              element={session ? <Dashboard profile={profile} /> : <Navigate to="/auth" />} 
+              element={session ? <Dashboard profile={profile} refreshProfile={() => fetchLatestProfile(profile?.id)} /> : <Navigate to="/auth" />} 
             />
             <Route 
               path="/auth" 

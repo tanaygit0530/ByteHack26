@@ -5,7 +5,7 @@ import AgreementCard from '../components/AgreementCard';
 import CreateAgreementModal from '../components/CreateAgreementModal';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const Dashboard = ({ profile }) => {
+const Dashboard = ({ profile, refreshProfile }) => {
   const [agreements, setAgreements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -40,6 +40,7 @@ const Dashboard = ({ profile }) => {
       console.error('Error fetching agreements:', error.message);
     } finally {
       setLoading(false);
+      if (refreshProfile) refreshProfile();
     }
   };
 
@@ -123,6 +124,7 @@ const Dashboard = ({ profile }) => {
                 agreement={agreement} 
                 role={profile.role} 
                 index={i}
+                refreshProfile={refreshProfile}
               />
             ))}
           </div>
