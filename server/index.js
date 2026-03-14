@@ -30,6 +30,7 @@ const supabase = (supabaseUrl && supabaseUrl.startsWith('http'))
   ? createClient(supabaseUrl, supabaseKey)
   : null;
 
+import { extractGithubDetails, fetchGithubData, analyzeRepositoryAI } from './services/verificationService.js';
 
 // Phase 1 Step 3: Immutable Fee Ledger Logic
 const calculateImmutableLedger = (amount, clientCountry, contractorCountry) => {
@@ -428,10 +429,10 @@ app.post('/api/agreements/:id/submit', async (req, res) => {
   const { deliverable_url } = req.body;
 
   try {
-    // Fetch agreement to verify and get contractor_id
+    // Fetch agreement to verify and get deliverables
     const { data: agreement, error: fetchError } = await supabase
       .from('agreements')
-      .select('contractor_id')
+      .select('contractor_id, deliverables')
       .eq('id', id)
       .single();
 
@@ -444,22 +445,34 @@ app.post('/api/agreements/:id/submit', async (req, res) => {
       submitted_by: agreement.contractor_id
     }]);
 
-    // Phase 2 Step 6: Trigger AI Analysis (Async simulated)
-    const aiResult = await performAIAnalysis(deliverable_url);
-    
+    // 1. Extract GitHub details
+    const repoDetails = extractGithubDetails(deliverable_url);
+    if (!repoDetails) {
+        throw new Error("Invalid GitHub URL provided.");
+    }
+
+    // 2. Fetch GitHub Data
+    const githubData = await fetchGithubData(repoDetails.owner, repoDetails.repo);
+
+    // 3. AI Analysis
+    const aiResult = await analyzeRepositoryAI(agreement.deliverables, githubData);
+
     // Insert into AI Reviews
     await supabase.from('ai_reviews').insert([{
       agreement_id: id,
-      ai_score: aiResult.ai_score,
-      ai_summary: aiResult.ai_summary,
+      repo_url: deliverable_url,
+      repo_owner: repoDetails.owner,
+      repo_name: repoDetails.repo,
+      ai_score: aiResult.confidence_score,
+      ai_summary: aiResult.summary,
       domain_match: aiResult.domain_match,
-      ai_metadata: aiResult.ai_metadata
+      ai_metadata: aiResult.binary_checks
     }]);
 
     const { data, error } = await supabase
       .from('agreements')
       .update({ 
-        status: 'IN_REVIEW',
+        status: 'VERIFICATION_COMPLETED',
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
@@ -468,6 +481,7 @@ app.post('/api/agreements/:id/submit', async (req, res) => {
     if (error) throw error;
     res.json({ message: 'Submission successful. AI analysis complete.', data });
   } catch (error) {
+    console.error("AI Error:", error);
     res.status(500).json({ error: error.message });
   }
 });

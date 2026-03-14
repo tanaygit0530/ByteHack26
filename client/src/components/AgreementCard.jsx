@@ -50,6 +50,7 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
     { id: 'ACCEPTED', label: 'Accepted', color: 'bg-blue-400' },
     { id: 'FUNDED_AND_LOCKED', label: 'Funded', color: 'bg-amber-500' },
     { id: 'IN_REVIEW', label: 'AI Reviewing', color: 'bg-blue-500' },
+    { id: 'VERIFICATION_COMPLETED', label: 'AI Verified', color: 'bg-purple-500' },
     { id: 'APPROVED', label: 'Approved', color: 'bg-emerald-500' },
     { id: 'REJECTED', label: 'Rejected', color: 'bg-rose-500' },
     { id: 'DISPUTED', label: 'Disputed', color: 'bg-red-500' },
@@ -293,7 +294,7 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
           </button>
         )}
 
-        {agreement.status === 'IN_REVIEW' && aiReview && (
+        {agreement.status === 'VERIFICATION_COMPLETED' && aiReview && (
         <div className="p-6 bg-[#0B0F19] border-t border-[#2A344A]">
            <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
@@ -306,8 +307,8 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
                  </div>
               </div>
               <div className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shadow-sm border ${
-                aiReview.ai_score >= 80 ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
-                aiReview.ai_score >= 50 ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 
+                aiReview.ai_score >= 95 ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
+                aiReview.ai_score >= 85 ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 
                 'bg-rose-500/10 text-rose-500 border-rose-500/20'
               }`}>
                 {aiReview.ai_score}% Confidence
@@ -322,19 +323,21 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
 
            <div className="grid grid-cols-2 gap-4">
               <div className="p-3 rounded-xl bg-[#111827] border border-[#2A344A]">
-                 <span className="text-[9px] text-gray-500 uppercase font-bold block mb-1">Analysis Type</span>
-                 <span className="text-xs text-white font-medium">{aiReview.ai_metadata?.analysis_type || 'General System'}</span>
-              </div>
-              <div className="p-3 rounded-xl bg-[#111827] border border-[#2A344A]">
-                 <span className="text-[9px] text-gray-500 uppercase font-bold block mb-1">Domain Match</span>
+                 <span className="text-[9px] text-gray-500 uppercase font-bold block mb-1">Domain Match (Web)</span>
                  <span className={`text-xs font-bold ${aiReview.domain_match ? 'text-emerald-400' : 'text-rose-400'}`}>
                     {aiReview.domain_match ? 'VERIFIED' : 'MISMATCH'}
+                 </span>
+              </div>
+              <div className="p-3 rounded-xl bg-[#111827] border border-[#2A344A]">
+                 <span className="text-[9px] text-gray-500 uppercase font-bold block mb-1">Metadata Flags</span>
+                 <span className="text-[10px] text-gray-400 font-mono block truncate">
+                    {aiReview.ai_metadata ? Object.entries(aiReview.ai_metadata).map(([k,v]) => `${k}:${v}`).join(', ') : 'None'}
                  </span>
               </div>
            </div>
         </div>
       )}
-        {agreement.status === 'IN_REVIEW' && role === 'client' && (
+        {agreement.status === 'VERIFICATION_COMPLETED' && role === 'client' && (
           <div className="space-y-3 mt-4">
               <div className="flex gap-3">
                   <button
@@ -472,6 +475,12 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
         {agreement.status === 'IN_REVIEW' && role === 'contractor' && (
             <div className="w-full py-4 flex items-center justify-center text-gray-500 italic text-sm">
                 AI verification in progress...
+            </div>
+        )}
+
+        {agreement.status === 'VERIFICATION_COMPLETED' && role === 'contractor' && (
+            <div className="w-full py-4 flex items-center justify-center text-purple-400 font-bold text-sm">
+                AI Verification Complete. Awaiting Client Approval...
             </div>
         )}
 

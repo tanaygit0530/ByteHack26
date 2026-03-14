@@ -92,6 +92,10 @@ CREATE TABLE public.ai_reviews (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   agreement_id UUID REFERENCES public.agreements(id),
+  
+  repo_url TEXT,
+  repo_owner TEXT,
+  repo_name TEXT,
 
   ai_score INTEGER,
   ai_summary TEXT,

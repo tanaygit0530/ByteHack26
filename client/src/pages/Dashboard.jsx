@@ -46,7 +46,7 @@ const Dashboard = ({ profile, refreshProfile }) => {
 
   const getStats = () => {
     const total = agreements.length;
-    const active = agreements.filter(a => ['FUNDED_AND_LOCKED', 'REVIEW_PENDING'].includes(a.status)).length;
+    const active = agreements.filter(a => ['FUNDED_AND_LOCKED', 'IN_REVIEW', 'VERIFICATION_COMPLETED'].includes(a.status)).length;
     const settled = agreements.filter(a => a.status === 'SETTLED').length;
     const volume = agreements.reduce((acc, curr) => acc + parseFloat(curr.amount), 0);
 
