@@ -379,27 +379,41 @@ const AgreementCard = ({ agreement, currentUserId, index, refreshProfile, isC2CV
 
           {agreement.status === 'AGREEMENT_CREATED' && currentUserId === agreement.payer_id && (
             <motion.div key="client-negotiate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-3">
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  onClick={() => handleAction('reject')}
-                  disabled={loading}
-                  className="py-4 rounded-2xl bg-rose-50 text-rose-600 border border-rose-100 font-bold hover:bg-rose-600 hover:text-white transition-all shadow-sm"
-                >
-                  Reject Deal
-                </button>
-                <button
-                  onClick={() => handleAction('fund')}
-                  disabled={loading}
-                  className="py-4 rounded-2xl bg-[#867361] text-white font-bold hover:bg-[#6f5e4f] transition-all shadow-sm flex items-center justify-center gap-2"
-                >
-                  <DollarSign className="w-4 h-4" />
-                  Accept & Secure Funds
-                </button>
-              </div>
-              {isC2CView && (
-                <p className="text-[10px] text-gray-400 font-bold text-center uppercase tracking-widest">
-                  Funds will be held in a secure vault until work is delivered.
-                </p>
+              {isC2CView ? (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <button
+                      onClick={() => handleAction('reject')}
+                      disabled={loading}
+                      className="py-4 rounded-2xl bg-rose-50 text-rose-600 border border-rose-100 font-bold hover:bg-rose-600 hover:text-white transition-all shadow-sm"
+                    >
+                      Reject Deal
+                    </button>
+                    <button
+                      onClick={() => handleAction('fund')}
+                      disabled={loading}
+                      className="py-4 rounded-2xl bg-[#867361] text-white font-bold hover:bg-[#6f5e4f] transition-all shadow-sm flex items-center justify-center gap-2"
+                    >
+                      <DollarSign className="w-4 h-4" />
+                      Accept & Secure Funds
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-gray-400 font-bold text-center uppercase tracking-widest">
+                    Funds will be held in a secure vault until work is delivered.
+                  </p>
+                </>
+              ) : (
+                <div className="w-full py-6 rounded-2xl bg-gray-50 border border-gray-100 flex flex-col items-center justify-center gap-3 text-center">
+                  <div className="p-3 rounded-full bg-amber-50">
+                    <Clock className="w-6 h-6 text-amber-500 animate-spin-slow" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-700">Waiting for Contractor</p>
+                    <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest mt-1">
+                      The agreement is pending review and acceptance by the contractor.
+                    </p>
+                  </div>
+                </div>
               )}
             </motion.div>
           )}
