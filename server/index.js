@@ -100,6 +100,42 @@ app.post('/api/agreements/:id/simulate-payment', async (req, res) => {
   const { id } = req.params;
   if (!supabase) return res.status(500).json({ error: "Supabase client not initialized. Check .env" });
   try {
+    // 1. Fetch agreement to get amount and client_id
+    const { data: agreement, error: fetchError } = await supabase
+      .from('agreements')
+      .select('amount, client_id, status')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !agreement) throw new Error("Agreement not found");
+    if (agreement.status !== 'PENDING_ACCEPTANCE') throw new Error("Agreement already funded");
+
+    const amountToDeduct = parseFloat(agreement.amount);
+
+    // 2. Fetch client profile
+    const { data: clientProfile, error: profileError } = await supabase
+      .from('profiles')
+      .select('wallet_balance')
+      .eq('id', agreement.client_id)
+      .single();
+
+    if (profileError) throw profileError;
+
+    const currentBalance = parseFloat(clientProfile.wallet_balance || 0);
+    if (currentBalance < amountToDeduct) {
+      throw new Error("Insufficient funds in client wallet");
+    }
+
+    // 3. Deduct from client wallet
+    const newBalance = currentBalance - amountToDeduct;
+    const { error: updateProfileError } = await supabase
+      .from('profiles')
+      .update({ wallet_balance: newBalance })
+      .eq('id', agreement.client_id);
+
+    if (updateProfileError) throw updateProfileError;
+
+    // 4. Update agreement status to FUNDED_AND_LOCKED
     const { data, error } = await supabase
       .from('agreements')
       .update({ status: 'FUNDED_AND_LOCKED' })
@@ -108,7 +144,7 @@ app.post('/api/agreements/:id/simulate-payment', async (req, res) => {
       .single();
 
     if (error) throw error;
-    res.json({ message: 'Payment simulated successfully', data });
+    res.json({ message: 'Payment simulated successfully. Funds deducted from client wallet.', data });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { supabase } from './lib/supabase';
 import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
 import Auth from './pages/Auth';
@@ -16,9 +17,40 @@ function App() {
       const user = JSON.parse(storedUser);
       setSession({ user });
       setProfile(user);
+      fetchLatestProfile(user.id);
     }
     setLoading(false);
+
+    // If we have a stored user, subscribe to changes to their profile row
+    let profileSubscription;
+    if (storedUser) {
+      const user = JSON.parse(storedUser);
+      profileSubscription = supabase
+        .channel('public:profiles')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` }, (payload) => {
+          setProfile(payload.new);
+          // Also update local storage so hard refreshes have the latest balance immediately
+          localStorage.setItem('dummy_user', JSON.stringify(payload.new));
+        })
+        .subscribe();
+    }
+
+    return () => {
+      if (profileSubscription) supabase.removeChannel(profileSubscription);
+    };
   }, []);
+
+  const fetchLatestProfile = async (userId) => {
+    try {
+      const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
+      if (data) {
+        setProfile(data);
+        localStorage.setItem('dummy_user', JSON.stringify(data));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const handleLogin = (user) => {
     localStorage.setItem('dummy_user', JSON.stringify(user));
