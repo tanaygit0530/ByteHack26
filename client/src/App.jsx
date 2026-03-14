@@ -5,6 +5,7 @@ import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
 import ClientToClient from './pages/ClientToClient';
 import Auth from './pages/Auth';
+import Background from './components/Background';
 
 function App() {
   const [session, setSession] = useState(null);
@@ -68,29 +69,32 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0B0F19] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-[#fcfcfc] flex items-center justify-center">
+        <Background />
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#867361]"></div>
       </div>
     );
   }
 
   return (
     <Router>
-      <div className="min-h-screen bg-[#0B0F19] text-gray-100">
+      <div className="min-h-screen bg-[#fcfcfc] text-[#1a1a1a] flex flex-col">
+        <Background />
         {session && <Navbar profile={profile} onLogout={handleLogout} />}
-        <main className={session ? "max-w-7xl mx-auto px-6 py-8" : ""}>
+        <main className={session ? "flex-1 max-w-7xl mx-auto px-6 py-8 w-full" : "flex-1 w-full"}>
           <Routes>
-            <Route 
-              path="/" 
-              element={session ? <Dashboard profile={profile} refreshProfile={() => fetchLatestProfile(profile?.id)} /> : <Navigate to="/auth" />} 
+            <Route
+              path="/"
+              element={session ? <Dashboard profile={profile} refreshProfile={() => fetchLatestProfile(profile?.id)} /> : <Navigate to="/auth" />}
             />
-            <Route 
-              path="/c2c" 
-              element={session ? <ClientToClient profile={profile} refreshProfile={() => fetchLatestProfile(profile?.id)} /> : <Navigate to="/auth" />} 
+
+            <Route
+              path="/c2c"
+              element={session ? <ClientToClient profile={profile} refreshProfile={() => fetchLatestProfile(profile?.id)} /> : <Navigate to="/auth" />}
             />
-            <Route 
-              path="/auth" 
-              element={!session ? <Auth onLogin={handleLogin} /> : <Navigate to="/" />} 
+            <Route
+              path="/auth"
+              element={!session ? <Auth onLogin={handleLogin} /> : <Navigate to="/" />}
             />
           </Routes>
         </main>

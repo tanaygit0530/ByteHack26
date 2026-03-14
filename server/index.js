@@ -26,7 +26,7 @@ if (!supabaseUrl || !supabaseUrl.startsWith('http') || !supabaseKey) {
   // We'll proceed with a null client to avoid immediate crash, but routes will fail
 }
 
-const supabase = (supabaseUrl && supabaseUrl.startsWith('http')) 
+const supabase = (supabaseUrl && supabaseUrl.startsWith('http'))
   ? createClient(supabaseUrl, supabaseKey)
   : null;
 
@@ -64,15 +64,15 @@ const calculateImmutableLedger = (amount, payerCountry, receiverCountry) => {
 // Phase 2 Step 6: AI Verification Service with Confidence Scoring Model
 const performAIAnalysis = async (repoUrl) => {
   console.log(`🤖 Starting AI Analysis for: ${repoUrl}`);
-  
+
   // Simulated GitHub metadata collection
   const repoName = repoUrl.split('/').pop();
-  
+
   // 1. Detect Repository Type & Domain Match
   // Logic: Only "Web Development" is valid for this escrow protocol
   let repo_type = "Unknown Repository";
   let domain_match = false;
-  
+
   const lowerUrl = repoUrl.toLowerCase();
   if (lowerUrl.includes('react') || lowerUrl.includes('next')) {
     repo_type = "Web Development Project (React/Next)";
@@ -140,10 +140,10 @@ const performAIAnalysis = async (repoUrl) => {
 const generateComplianceReceipt = async (agreement) => {
   const receiptId = `REC-${agreement.id.slice(0, 8).toUpperCase()}`;
   const timestamp = new Date().toISOString();
-  
+
   // In a real app, this would generate a PDF and upload to Supabase Storage
   const receiptUrl = `https://nexus-escrow.com/receipts/${receiptId}`;
-  
+
   console.log(`📄 Generated Compliance Receipt: ${receiptId}`);
   return receiptUrl;
 };
@@ -171,16 +171,16 @@ const executeSettlement = async (agreementId, outcome, arbiterId = null, splitDa
     agreement.receiver = contractor;
 
     if (outcome === 'CONTRACTOR_WINS') {
-        receiverPayout = parseFloat(agreement.receiver_amount);
-        status = 'SETTLED';
+      receiverPayout = parseFloat(agreement.receiver_amount);
+      status = 'SETTLED';
     } else if (outcome === 'CLIENT_WINS') {
-        payerRefund = parseFloat(amount); // Refund total deposit
-        status = 'REFUNDED';
+      payerRefund = parseFloat(amount); // Refund total deposit
+      status = 'REFUNDED';
     } else if (outcome === 'PARTIAL_SETTLEMENT') {
-        const receiverCut = parseFloat(splitData.contractor_percent) || parseFloat(splitData.receiver_percent) / 100;
-        receiverPayout = parseFloat(amount) * (receiverCut / 100);
-        payerRefund = parseFloat(amount) - receiverPayout;
-        status = 'PARTIAL_SETTLED';
+      const receiverCut = parseFloat(splitData.contractor_percent) || parseFloat(splitData.receiver_percent) / 100;
+      receiverPayout = parseFloat(amount) * (receiverCut / 100);
+      payerRefund = parseFloat(amount) - receiverPayout;
+      status = 'PARTIAL_SETTLED';
     }
 
     // Process Receiver Payout
@@ -219,11 +219,11 @@ const executeSettlement = async (agreementId, outcome, arbiterId = null, splitDa
     // Final Audit Log
     const { data: aiReview } = await supabase.from('ai_reviews').select('ai_score').eq('agreement_id', agreementId).order('created_at', { ascending: false }).limit(1).single();
     await supabase.from('audit_logs').insert([{
-        agreement_id: agreementId,
-        reviewer: arbiterId || payer_id,
-        ai_score: aiReview?.ai_score || 0,
-        decision: outcome,
-        reason: outcome === 'CONTRACTOR_WINS' ? 'Satisfactory completion' : 'Arbitration resolved'
+      agreement_id: agreementId,
+      reviewer: arbiterId || payer_id,
+      ai_score: aiReview?.ai_score || 0,
+      decision: outcome,
+      reason: outcome === 'CONTRACTOR_WINS' ? 'Satisfactory completion' : 'Arbitration resolved'
     }]);
 
     // Construct Compliance Certificate
@@ -258,8 +258,8 @@ const executeSettlement = async (agreementId, outcome, arbiterId = null, splitDa
     };
 
     await supabase.from('agreements')
-      .update({ 
-        status, 
+      .update({
+        status,
         updated_at: new Date().toISOString(),
         compliance_report: complianceReport
       })
@@ -283,20 +283,9 @@ app.post('/api/agreements', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: "Supabase client not initialized" });
 
   try {
-    // Fetch client and contractor countries for tax calculation
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, country')
-      .in('id', [payer_id, receiver_id]);
-    
-    const client = profiles.find(p => p.id === payer_id);
-    const contractor = profiles.find(p => p.id === receiver_id);
-
-    // Calculate Immutable Ledger
-    const ledger = calculateImmutableLedger(amount, client?.country, contractor?.country);
-
     // SELF-HEALING: Ensure profiles and wallets exist 
     const ensureProfile = async (id, name, role, country, email, balance) => {
+      if (!id) return;
       const { data } = await supabase.from('profiles').select('id').eq('id', id).single();
       if (!data) {
         await supabase.from('profiles').upsert([{ id, full_name: name, role, country, email, kyc_status: 'VERIFIED' }]);
@@ -307,11 +296,23 @@ app.post('/api/agreements', async (req, res) => {
     await ensureProfile(payer_id, 'Acme Corp (Client)', 'client', 'USA', 'client@nexus.com', 50000);
     await ensureProfile(receiver_id, 'Jane Doe (Contractor)', 'contractor', 'India', 'contractor@nexus.com', 200);
 
+    // Fetch client and contractor countries for tax calculation
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, country')
+      .in('id', [payer_id, receiver_id].filter(Boolean));
+
+    const client = profiles?.find(p => p.id === payer_id);
+    const contractor = profiles?.find(p => p.id === receiver_id);
+
+    // Calculate Immutable Ledger
+    const ledger = calculateImmutableLedger(amount, client?.country, contractor?.country);
+
     const { data, error } = await supabase
       .from('agreements')
       .insert([{
         title, description, deliverables, amount, deadline, payer_id, receiver_id,
-        trigger_type: trigger_type || 'manual_review', status: 'DRAFT', 
+        trigger_type: trigger_type || 'manual_review', status: 'DRAFT',
         agreement_type: agreement_type || 'ESCROW', ...ledger
       }])
       .select().single();
@@ -346,9 +347,9 @@ app.post('/api/agreements/:id/fund', async (req, res) => {
       .single();
 
     if (walletError || !wallet) {
-       // Auto-create wallet if missing
-       const { data: newWallet } = await supabase.from('wallets').insert([{ owner_id: agreement.payer_id, balance: 50000 }]).select().single();
-       wallet = newWallet;
+      // Auto-create wallet if missing
+      const { data: newWallet } = await supabase.from('wallets').insert([{ owner_id: agreement.payer_id, balance: 50000 }]).select().single();
+      wallet = newWallet;
     }
 
     const currentBalance = parseFloat(wallet.balance || 0);
@@ -386,7 +387,7 @@ app.post('/api/agreements/:id/reject', async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('agreements')
-      .update({ 
+      .update({
         status: 'REJECTED',
         rejection_reason: reason,
         updated_at: new Date().toISOString()
@@ -408,7 +409,7 @@ app.post('/api/agreements/:id/accept-receiver', async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('agreements')
-      .update({ 
+      .update({
         status: 'ACCEPTED',
         updated_at: new Date().toISOString()
       })
@@ -448,7 +449,7 @@ app.post('/api/agreements/:id/submit', async (req, res) => {
     // 1. Extract GitHub details
     const repoDetails = extractGithubDetails(deliverable_url);
     if (!repoDetails) {
-        throw new Error("Invalid GitHub URL provided.");
+      throw new Error("Invalid GitHub URL provided.");
     }
 
     // 2. Fetch GitHub Data
@@ -460,7 +461,7 @@ app.post('/api/agreements/:id/submit', async (req, res) => {
     // Save directly to agreements
     const { data: updatedAgreement, error: updateError } = await supabase
       .from('agreements')
-      .update({ 
+      .update({
         ai_score: aiData.confidence_score,
         ai_summary: aiData.summary,
         domain_match: aiData.domain_match,
@@ -471,12 +472,12 @@ app.post('/api/agreements/:id/submit', async (req, res) => {
       .select().single();
 
     if (updateError) throw updateError;
-    
-    res.json({ 
-        success: true, 
-        ai_score: aiData.confidence_score,
-        ai_summary: aiData.summary,
-        data: updatedAgreement 
+
+    res.json({
+      success: true,
+      ai_score: aiData.confidence_score,
+      ai_summary: aiData.summary,
+      data: updatedAgreement
     });
   } catch (error) {
     console.error("AI Error:", error);
@@ -491,7 +492,7 @@ app.post('/api/agreements/:id/reviews', async (req, res) => {
 
   try {
     const status = decision === 'approve' ? 'APPROVED' : 'DISPUTED';
-    
+
     // 1. Update Agreement Status
     const { data: agreement, error: updateError } = await supabase
       .from('agreements')
@@ -506,23 +507,23 @@ app.post('/api/agreements/:id/reviews', async (req, res) => {
 
     // 2. Step 6: Create Audit Log entry
     await supabase.from('audit_logs').insert([{
-        agreement_id: id,
-        reviewer: agreement.payer_id,
-        ai_score: aiReview?.ai_score || 0,
-        decision,
-        reason: reason || 'Human verified decision'
+      agreement_id: id,
+      reviewer: agreement.payer_id,
+      ai_score: aiReview?.ai_score || 0,
+      decision,
+      reason: reason || 'Human verified decision'
     }]);
 
     // 3. If approved, trigger settlement immediately
     let settlementResult = null;
     if (decision === 'approve') {
-       settlementResult = await executeSettlement(id, 'CONTRACTOR_WINS');
+      settlementResult = await executeSettlement(id, 'CONTRACTOR_WINS');
     }
 
-    res.json({ 
-      message: `Agreement ${status.toLowerCase()} successfully.`, 
+    res.json({
+      message: `Agreement ${status.toLowerCase()} successfully.`,
       data: agreement,
-      settlement: settlementResult 
+      settlement: settlementResult
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -545,9 +546,9 @@ app.post('/api/agreements/:id/request-changes', async (req, res) => {
 
     const { error: updateError } = await supabase
       .from('agreements')
-      .update({ 
-          status: 'FUNDED_AND_LOCKED', // Revert to funded so contractor can submit again
-          updated_at: new Date().toISOString() 
+      .update({
+        status: 'FUNDED_AND_LOCKED', // Revert to funded so contractor can submit again
+        updated_at: new Date().toISOString()
       })
       .eq('id', id);
 
@@ -555,11 +556,11 @@ app.post('/api/agreements/:id/request-changes', async (req, res) => {
 
     // Log the request for changes
     await supabase.from('audit_logs').insert([{
-        agreement_id: id,
-        reviewer: agreement.payer_id,
-        ai_score: agreement.ai_score,
-        decision: 'request_changes',
-        reason
+      agreement_id: id,
+      reviewer: agreement.payer_id,
+      ai_score: agreement.ai_score,
+      decision: 'request_changes',
+      reason
     }]);
 
     res.json({ message: 'Changes requested successfully.' });
@@ -596,20 +597,20 @@ app.post('/api/agreements/:id/dispute', async (req, res) => {
 
 // Step 10: Arbitration Escalation
 app.post('/api/agreements/:id/escalate', async (req, res) => {
-    const { id } = req.params;
-    try {
-      await supabase.from('agreements').update({ status: 'ARBITRATION' }).eq('id', id);
-      res.json({ message: 'Case escalated to human arbiter.' });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
+  const { id } = req.params;
+  try {
+    await supabase.from('agreements').update({ status: 'ARBITRATION' }).eq('id', id);
+    res.json({ message: 'Case escalated to human arbiter.' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Step 12: Arbitration Decision
 app.post('/api/agreements/:id/arbitrate', async (req, res) => {
   const { id } = req.params;
   const { outcome, arbiter_id, reason, split_data } = req.body;
-  
+
   try {
     const result = await executeSettlement(id, outcome, arbiter_id, split_data);
     res.json(result);
@@ -636,10 +637,10 @@ app.post('/api/agreements/:id/simulate-payment', async (req, res) => {
   try {
     const { data: agreement } = await supabase.from('agreements').select('status').eq('id', id).single();
     if (agreement.status === 'DRAFT' || agreement.status === 'PENDING_ACCEPTANCE') {
-        // Force status to DRAFT if it's the old one to allow funding
-        if (agreement.status === 'PENDING_ACCEPTANCE') {
-            await supabase.from('agreements').update({ status: 'DRAFT' }).eq('id', id);
-        }
+      // Force status to DRAFT if it's the old one to allow funding
+      if (agreement.status === 'PENDING_ACCEPTANCE') {
+        await supabase.from('agreements').update({ status: 'DRAFT' }).eq('id', id);
+      }
     }
     // Then fund it
     const fundResponse = await axios.post(`http://localhost:${PORT}/api/agreements/${id}/fund`);
@@ -662,8 +663,8 @@ app.post('/api/profiles/:id/add-funds', async (req, res) => {
       .single();
 
     if (fetchError || !wallet) {
-       const { data: newWallet } = await supabase.from('wallets').insert([{ owner_id: id, balance: 0 }]).select().single();
-       wallet = newWallet;
+      const { data: newWallet } = await supabase.from('wallets').insert([{ owner_id: id, balance: 0 }]).select().single();
+      wallet = newWallet;
     }
 
     const newBalance = parseFloat(wallet.balance || 0) + parseFloat(amount);

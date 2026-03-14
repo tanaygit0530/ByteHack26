@@ -12,7 +12,6 @@ const Dashboard = ({ profile, refreshProfile, isC2CView }) => {
 
   useEffect(() => {
     fetchAgreements();
-    // Real-time updates
     const subscription = supabase
       .channel('agreements_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'agreements' }, () => {
@@ -45,7 +44,6 @@ const Dashboard = ({ profile, refreshProfile, isC2CView }) => {
       }
 
       const { data, error } = await query;
-
       if (error) throw error;
       setAgreements(data);
     } catch (error) {
@@ -61,77 +59,104 @@ const Dashboard = ({ profile, refreshProfile, isC2CView }) => {
     const active = agreements.filter(a => ['FUNDED_AND_LOCKED', 'IN_REVIEW', 'AI_VERIFIED'].includes(a.status)).length;
     const settled = agreements.filter(a => a.status === 'SETTLED').length;
     const volume = agreements.reduce((acc, curr) => acc + parseFloat(curr.amount), 0);
-
     return { total, active, settled, volume };
   };
 
   const stats = getStats();
 
   return (
-    <div className="space-y-10 pb-20">
+    <div className="space-y-12 pb-20">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col md:flex-row md:items-end justify-between gap-8 pt-6"
+      >
         <div>
-          <h1 className="text-2xl font-semibold text-white mb-2">Welcome back, {profile?.full_name?.split(' ')[0]}</h1>
-          <p className="text-gray-400 text-base">
-            {isC2CView ? 'Manage your peer-to-peer client agreements.' : 'Manage your programmable cross-border escrow agreements.'}
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-2 h-8 bg-[#867361] rounded-full shadow-[0_0_10px_rgba(134,115,97,0.3)]" />
+            <h1 className="text-4xl font-extrabold text-[#1a1a1a] tracking-tight">
+              Protocol <span className="gradient-text italic">Dashboard</span>
+            </h1>
+          </div>
+          <p className="text-gray-500 text-lg max-w-2xl font-medium leading-relaxed">
+            Welcome back, <span className="text-[#867361] font-bold">{profile?.full_name?.split(' ')[0]}</span>.
+            {isC2CView
+              ? ' You are currently managing peer-to-peer client agreements within the Nexus protocol.'
+              : ' Monitor and manage your secure cross-border escrow transactions in real-time.'}
           </p>
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all shadow-md active:scale-95"
+          className="group relative flex items-center gap-3 px-8 py-4 bg-[#867361] hover:bg-[#6f5e4f] text-white rounded-2xl font-bold transition-all shadow-brown10 active:scale-95 overflow-hidden"
         >
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
           <Plus className="w-5 h-5" />
-          {isC2CView ? 'Create Client Agreement' : 'Create Agreement'}
+          {isC2CView ? 'New Client Agreement' : 'Secure New Escrow'}
         </button>
-      </div>
+      </motion.div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: 'Total Volume', value: `$${stats.volume.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: Briefcase, color: 'text-white' },
-          { label: 'Active Escrows', value: stats.active, icon: Clock, color: 'text-white' },
-          { label: 'Settled', value: stats.settled, icon: CheckCircle, color: 'text-white' },
-          { label: 'Platform Trust', value: '100%', icon: ShieldCheck, color: 'text-white' },
+          { label: 'Total Volume', value: `$${stats.volume.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: Briefcase, color: 'brown' },
+          { label: 'Active Escrows', value: stats.active, icon: Clock, color: 'gray' },
+          { label: 'Settled Protocols', value: stats.settled, icon: CheckCircle, color: 'emerald' },
+          { label: 'Network Trust', value: '100%', icon: ShieldCheck, color: 'gray' },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
-            className="rounded-xl bg-[#1A2235] border border-[#2A344A] p-6 hover:scale-[1.02] transition-all duration-200 shadow-lg"
+            className="group glass-card p-6 rounded-3xl relative overflow-hidden transition-all hover:shadow-lg hover:border-[#867361]/20 bg-white"
           >
-            <div className="flex justify-between items-start mb-4">
-              <div className={`p-3 rounded-lg bg-[#111827] ${stat.color}`}>
-                <stat.icon className="w-5 h-5" />
+            <div className="absolute top-0 right-0 w-24 h-24 bg-[#867361]/5 blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-[#867361]/10 transition-colors" />
+            <div className="flex justify-between items-start mb-6">
+              <div className="p-4 rounded-2xl bg-gray-50 text-[#867361] border border-gray-100 shadow-sm group-hover:bg-[#867361]/5 transition-colors">
+                <stat.icon className="w-6 h-6" />
               </div>
             </div>
-            <p className="text-sm text-gray-400 mb-1">{stat.label}</p>
-            <p className="text-2xl font-bold text-white">{stat.value}</p>
+            <div>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">{stat.label}</p>
+              <p className="text-3xl font-extrabold text-[#1a1a1a] tracking-tight">{stat.value}</p>
+            </div>
           </motion.div>
         ))}
       </div>
 
       {/* Main Content */}
-      <div className="rounded-xl bg-[#111827] border border-[#2A344A] p-8 mt-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-white">{isC2CView ? 'Client ↔ Client Protocols' : 'Your Agreements'}</h2>
-          <div className="flex items-center gap-2 text-sm text-gray-400 bg-[#1A2235] border border-[#2A344A] py-1 px-3 rounded-full">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <h2 className="text-2xl font-bold text-[#1a1a1a] tracking-tight">
+              {isC2CView ? 'Peer-to-Peer Protocols' : 'Active Agreement Ledger'}
+            </h2>
+            <span className="px-3 py-1 rounded-full bg-[#867361]/10 border border-[#867361]/20 text-[#867361] text-[10px] font-black uppercase tracking-tighter">Live Sync</span>
+          </div>
+
+          <div className="hidden md:flex items-center gap-2 text-[10px] text-gray-400 font-black uppercase tracking-widest">
             <Info className="w-4 h-4" />
-            <span>Updates in real-time</span>
+            <span>Secure Cryptographic Ledger</span>
           </div>
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[1, 2].map(i => <div key={i} className="h-40 bg-[#1A2235] border border-[#2A344A] rounded-xl animate-pulse"></div>)}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {[1, 2].map(i => (
+              <div key={i} className="h-[400px] glass-card rounded-[32px] animate-pulse flex flex-col p-8 gap-6 bg-white">
+                <div className="h-8 w-1/3 bg-gray-50 rounded-lg" />
+                <div className="h-4 w-full bg-gray-50 rounded-lg" />
+                <div className="h-32 w-full bg-gray-50 rounded-2xl mt-auto" />
+              </div>
+            ))}
           </div>
         ) : agreements.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {agreements.map((agreement, i) => (
-              <AgreementCard 
-                key={agreement.id} 
-                agreement={agreement} 
+              <AgreementCard
+                key={agreement.id}
+                agreement={agreement}
                 currentUserId={profile?.id}
                 index={i}
                 refreshProfile={refreshProfile}
@@ -140,29 +165,35 @@ const Dashboard = ({ profile, refreshProfile, isC2CView }) => {
             ))}
           </div>
         ) : (
-          <div className="py-16 text-center">
-            <div className="w-16 h-16 bg-[#1A2235] border border-[#2A344A] rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Briefcase className="w-8 h-8 text-gray-400" />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="py-24 glass-card rounded-[40px] text-center max-w-2xl mx-auto border-dashed border-gray-200 bg-white"
+          >
+            <div className="w-24 h-24 bg-[#867361]/5 border border-[#867361]/10 rounded-[32px] flex items-center justify-center mx-auto mb-8 shadow-sm">
+              <Briefcase className="w-10 h-10 text-[#867361]" />
             </div>
-            <h3 className="text-lg font-semibold text-white mb-2">No agreements yet</h3>
-            <p className="text-gray-400 mb-6 max-w-sm mx-auto">
-              {isC2CView ? 'Start by creating a new peer-to-peer client agreement.' : 'Start by creating a new programmable escrow agreement.'}
+            <h3 className="text-3xl font-extrabold text-[#1a1a1a] mb-4">The ledger is empty</h3>
+            <p className="text-gray-500 mb-10 max-w-sm mx-auto text-lg font-medium leading-relaxed">
+              {isC2CView
+                ? 'Initiate your first peer-to-peer client agreement to begin secure transactions.'
+                : 'Secure your first programmable escrow agreement with cryptographic trust.'}
             </p>
             <button
               onClick={() => setIsModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-md"
+              className="btn-primary px-10 py-4 flex items-center gap-3 mx-auto"
             >
-              Create Agreement <ArrowRight className="w-4 h-4" />
+              Start Your First Protocol <ArrowRight className="w-5 h-5" />
             </button>
-          </div>
+          </motion.div>
         )}
       </div>
 
       <AnimatePresence>
         {isModalOpen && (
-          <CreateAgreementModal 
-            onClose={() => setIsModalOpen(false)} 
-            refresh={fetchAgreements} 
+          <CreateAgreementModal
+            onClose={() => setIsModalOpen(false)}
+            refresh={fetchAgreements}
             profile={profile}
             isC2CView={isC2CView}
           />

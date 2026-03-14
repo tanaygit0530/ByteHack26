@@ -24,12 +24,11 @@ const CreateAgreementModal = ({ onClose, refresh, profile, isC2CView }) => {
     fetchCounterpartys();
   }, []);
 
-  // Recalculate ledger whenever amount or counterparty changes
   useEffect(() => {
     if (formData.amount && formData.receiver_id) {
-       calculateFees();
+      calculateFees();
     } else {
-       setLedger(null);
+      setLedger(null);
     }
   }, [formData.amount, formData.receiver_id]);
 
@@ -39,12 +38,10 @@ const CreateAgreementModal = ({ onClose, refresh, profile, isC2CView }) => {
         .from('profiles')
         .select('id, full_name, country')
         .neq('id', profile?.id);
-      
+
       if (isC2CView) {
-        // C2C: Clients find other Clients
         query = query.eq('role', 'client');
       } else {
-        // Escrow Hub: Clients find Contractors, Contractors find Clients
         if (profile?.role === 'client') {
           query = query.eq('role', 'contractor');
         } else {
@@ -53,43 +50,39 @@ const CreateAgreementModal = ({ onClose, refresh, profile, isC2CView }) => {
       }
 
       const { data, error } = await query;
-      
       if (!error && data && data.length > 0) {
         setCounterpartys(data);
       } else {
-        const dummyLabel = isC2CView ? 'Client' : 'Contractor';
         setCounterpartys([{
           id: '22222222-2222-2222-2222-222222222222',
-          full_name: `Jane Doe (${dummyLabel})`,
+          full_name: 'Simulated User',
           country: 'India'
         }]);
       }
     } catch {
-        const dummyLabel = isC2CView ? 'Client' : 'Contractor';
-        setCounterpartys([{
-          id: '22222222-2222-2222-2222-222222222222',
-          full_name: `Jane Doe (${dummyLabel})`,
-          country: 'India'
-        }]);
+      setCounterpartys([{
+        id: '22222222-2222-2222-2222-222222222222',
+        full_name: 'Simulated User',
+        country: 'India'
+      }]);
     }
   };
 
   const calculateFees = () => {
     const amount = parseFloat(formData.amount);
     if (!amount) return;
-    
-    // Simulate server ledger logic locally for UX
-    const contractor = contractors.find(c => c.id === formData.receiver_id);
+
+    const contractor = contractors?.find(c => c.id === formData.receiver_id);
     const clientCountry = profile?.country || 'USA';
     const contractorCountry = contractor?.country || 'India';
-    
-    let taxRate = 0.02; // General
+
+    let taxRate = 0.02;
     if (clientCountry === 'USA' && contractorCountry === 'India') taxRate = 0.10;
     else if (clientCountry === contractorCountry) taxRate = 0.05;
 
     const plat = amount * 0.01;
     const tax = amount * taxRate;
-    
+
     setLedger({
       platform: plat.toFixed(2),
       tax: tax.toFixed(2),
@@ -113,18 +106,14 @@ const CreateAgreementModal = ({ onClose, refresh, profile, isC2CView }) => {
         agreement_type: isC2CView ? 'C2C' : 'ESCROW'
       };
 
-      // Smart Role Assignment
       if (isC2CView) {
-        // P2P: Initiator is payer
         payload.payer_id = profile.id;
         payload.receiver_id = formData.receiver_id;
       } else {
-        // Escrow Hub: Enforce Client/Contractor relationship
         if (profile.role === 'client') {
           payload.payer_id = profile.id;
           payload.receiver_id = formData.receiver_id;
         } else {
-          // If a contractor creates the agreement, the selected person (Client) is the payer
           payload.payer_id = formData.receiver_id;
           payload.receiver_id = profile.id;
         }
@@ -142,181 +131,196 @@ const CreateAgreementModal = ({ onClose, refresh, profile, isC2CView }) => {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
-        className="absolute inset-0 bg-gray-950/90 backdrop-blur-md"
+        className="absolute inset-0 bg-white/40 backdrop-blur-xl"
       ></motion.div>
-      
+
       <motion.div
         initial={{ opacity: 0, scale: 0.9, y: 30 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 30 }}
-        className="relative w-full max-w-2xl bg-[#111827] border border-[#2A344A] rounded-[32px] overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)]"
+        className="relative w-full max-w-3xl glass-card rounded-[40px] overflow-hidden shadow-2xl bg-white border border-gray-100"
       >
-        <div className="p-8 border-b border-white/5 flex justify-between items-center bg-[#1A2235]/50">
+        <div className="p-10 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-               <Zap className="w-5 h-5 text-blue-500 fill-blue-500" />
-               <h2 className="text-2xl font-bold text-white">{isC2CView ? 'Client ↔ Client Agreement' : 'Draft Smart Agreement'}</h2>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 rounded-xl bg-[#867361]/10 text-[#867361]">
+                <Zap className="w-5 h-5 fill-current" />
+              </div>
+              <h2 className="text-3xl font-extrabold text-[#1a1a1a] tracking-tight">
+                {isC2CView ? 'Initiate P2P Protocol' : 'Draft Secure Agreement'}
+              </h2>
             </div>
-            <p className="text-sm text-gray-400 font-medium">{isC2CView ? 'Peer-to-Peer Protocol Initialization' : 'Phase 1: Immutable Protocol Handshake'}</p>
+            <p className="text-gray-500 font-medium tracking-wide">
+              {isC2CView ? 'Peer-to-Peer Cryptographic Handshake' : 'Phase 1: Defining Immutable Protocol Parameters'}
+            </p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full text-gray-400 hover:text-white transition-colors">
+          <button onClick={onClose} className="p-3 hover:bg-gray-100 rounded-2xl text-gray-400 hover:text-[#1a1a1a] transition-all">
             <X className="w-6 h-6" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 grid grid-cols-2 gap-8 h-[600px] overflow-y-auto custom-scrollbar">
-          {/* Left Column: Form Fields */}
-          <div className="space-y-6">
+        <form onSubmit={handleSubmit} className="p-10 grid grid-cols-1 md:grid-cols-2 gap-10 max-h-[70vh] overflow-y-auto custom-scrollbar">
+          <div className="space-y-8">
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Protocol Title</label>
-              <div className="relative">
-                <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Agreement Title</label>
+              <div className="group relative">
+                <FileText className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-[#867361] transition-colors" />
                 <input
                   required
-                  className="w-full pl-10"
-                  placeholder="Cross-border Web Protocol"
+                  className="w-full pl-12 pr-4 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:border-[#867361]/50 focus:bg-white transition-all outline-none text-[#1a1a1a] font-medium"
+                  placeholder="e.g. Frontend Development Protocol"
                   value={formData.title}
-                  onChange={(e) => setFormData({...formData, title: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 />
               </div>
             </div>
 
-            <div className="space-y-4">
-               <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Budget (USD Pegged)</label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
-                    <input
-                      required
-                      type="number"
-                      className="w-full pl-10 font-mono text-white placeholder-gray-700"
-                      placeholder="0.00"
-                      value={formData.amount}
-                      onChange={(e) => setFormData({...formData, amount: e.target.value})}
-                    />
-                  </div>
-               </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Value (USD)</label>
+                <div className="group relative">
+                  <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-emerald-600 transition-colors" />
+                  <input
+                    required
+                    type="number"
+                    className="w-full pl-12 pr-4 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:border-emerald-500/50 focus:bg-white transition-all outline-none text-[#1a1a1a] font-mono"
+                    placeholder="0.00"
+                    value={formData.amount}
+                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                  />
+                </div>
+              </div>
 
-               <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Protocol Deadline</label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
-                    <input
-                      required
-                      type="date"
-                      className="w-full pl-10"
-                      value={formData.deadline}
-                      onChange={(e) => setFormData({...formData, deadline: e.target.value})}
-                    />
-                  </div>
-               </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Deadline</label>
+                <div className="group relative">
+                  <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-[#867361] transition-colors" />
+                  <input
+                    required
+                    type="date"
+                    className="w-full pl-12 pr-4 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:border-[#867361]/50 focus:bg-white transition-all outline-none text-[#1a1a1a]"
+                    value={formData.deadline}
+                    onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{isC2CView ? 'Target Client' : (profile?.role === 'contractor' ? 'Target Client' : 'Service Provider')}</label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Counterparty</label>
+              <div className="group relative">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-[#867361] transition-colors" />
                 <select
                   required
-                  className="w-full pl-10 h-[42px]"
+                  className="w-full pl-12 pr-4 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:border-[#867361]/50 focus:bg-white transition-all outline-none text-[#1a1a1a] appearance-none cursor-pointer"
                   value={formData.receiver_id}
-                  onChange={(e) => setFormData({...formData, receiver_id: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, receiver_id: e.target.value })}
                 >
-                  <option value="">{isC2CView ? 'Select Client...' : (profile?.role === 'contractor' ? 'Select Client...' : 'Select Service Provider...')}</option>
+                  <option value="" className="bg-white">Select Member...</option>
                   {contractors.map(c => (
-                    <option key={c.id} value={c.id}>{c.full_name} ({c.country})</option>
+                    <option key={c.id} value={c.id} className="bg-white">{c.full_name} ({c.country})</option>
                   ))}
                 </select>
               </div>
             </div>
 
             <div className="space-y-2">
-                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Oracle Release Trigger</label>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Autonomous Release Trigger</label>
+              <div className="group relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-amber-600 transition-colors">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
                 <select
                   required
-                  className="w-full h-[42px] px-3 bg-[#1A2235]/50 border border-white/5 rounded-xl text-white text-sm"
+                  className="w-full pl-12 pr-4 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:border-amber-500/50 focus:bg-white transition-all outline-none text-[#1a1a1a] appearance-none cursor-pointer"
                   value={formData.trigger_type}
-                  onChange={(e) => setFormData({...formData, trigger_type: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, trigger_type: e.target.value })}
                 >
-                  <option value="manual_review">Manual Initiator Approval</option>
-                  <option value="github_pr">GitHub PR Merge (Automated)</option>
+                  <option value="manual_review" className="bg-white">Manual verification</option>
+                  <option value="github_pr" className="bg-white">GitHub Pull Request (AI-Verified)</option>
                 </select>
+              </div>
             </div>
           </div>
 
-          {/* Right Column: Ledger and Details */}
-          <div className="space-y-6">
+          <div className="space-y-8">
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Agreement Context</label>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Protocol Objectives</label>
               <textarea
                 required
-                className="w-full min-h-[80px] text-sm leading-relaxed"
-                placeholder="Core objectives..."
+                className="w-full min-h-[100px] px-4 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:border-[#867361]/50 focus:bg-white transition-all outline-none text-[#1a1a1a] text-sm leading-relaxed"
+                placeholder="Detail the core scope of work..."
                 value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               />
             </div>
 
-             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Specific Deliverables</label>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Deliverables</label>
               <textarea
                 required
-                className="w-full min-h-[80px] text-sm leading-relaxed border-dashed"
-                placeholder="1. Verified GitHub Repo..."
+                className="w-full min-h-[100px] px-4 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:border-[#867361]/50 focus:bg-white transition-all outline-none text-[#1a1a1a] text-sm leading-relaxed border-dashed"
+                placeholder="1. Source Code Repository&#10;2. Documentation&#10;3. API Specification"
                 value={formData.deliverables}
-                onChange={(e) => setFormData({...formData, deliverables: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, deliverables: e.target.value })}
               />
             </div>
 
-            {/* Step 3: Immutable Ledger Display */}
-            <div className="p-5 rounded-2xl bg-[#1A2235] border border-blue-500/20 shadow-inner">
-               <h3 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                 <ShieldCheck className="w-3 h-3" /> Step 3: Immutable Fee Ledger
-               </h3>
-               
-               {ledger ? (
-                 <div className="space-y-3">
-                   <div className="flex justify-between items-center text-xs">
-                      <span className="text-gray-400">Total Deposit</span>
-                      <span className="text-white font-mono">${parseFloat(formData.amount).toFixed(2)}</span>
-                   </div>
-                   <div className="flex justify-between items-center text-xs">
-                      <span className="text-gray-400">Platform Fee (1%)</span>
-                      <span className="text-white/60 font-mono">-${ledger.platform}</span>
-                   </div>
-                   <div className="flex justify-between items-center text-xs">
-                      <div className="flex flex-col">
-                        <span className="text-gray-400">Tax Reserve</span>
-                        <span className="text-[8px] text-amber-500/80 uppercase font-bold">{ledger.taxLabel}</span>
-                      </div>
-                      <span className="text-white/60 font-mono">-${ledger.tax}</span>
-                   </div>
-                   <div className="pt-3 border-t border-white/5 flex justify-between items-center">
-                      <span className="text-sm font-bold text-emerald-400">{isC2CView ? 'Net to Client' : 'Net to Contractor'}</span>
-                      <span className="text-lg font-black text-emerald-400 font-mono">${ledger.contractor}</span>
-                   </div>
-                 </div>
-               ) : (
-                 <div className="flex flex-col items-center justify-center py-6 text-center">
-                    <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mb-2">
-                       <AlertCircle className="w-4 h-4 text-gray-600" />
+            {/* Fee Ledger Display */}
+            <div className="p-6 rounded-[32px] bg-[#867361]/5 border border-[#867361]/10 overflow-hidden relative group">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[#867361]/5 blur-3xl rounded-full" />
+              <h3 className="text-[10px] font-black text-[#867361] uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                <Globe className="w-3.5 h-3.5" /> Immutable Fee Ledger
+              </h3>
+
+              {ledger ? (
+                <div className="space-y-4 relative z-10">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 text-xs font-medium">Total Capital Deposit</span>
+                    <span className="text-[#1a1a1a] font-mono text-xs">${parseFloat(formData.amount).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 text-xs font-medium">Platform Service Fee (1%)</span>
+                    <span className="text-rose-600 font-mono text-xs">-${ledger.platform}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <div className="flex flex-col">
+                      <span className="text-gray-500 text-xs font-medium">Regulatory Tax Reserve</span>
+                      <span className="text-[9px] text-amber-600 font-black uppercase tracking-tighter mt-0.5">{ledger.taxLabel}</span>
                     </div>
-                    <p className="text-[10px] text-gray-600 italic">Enter budget and {isC2CView ? 'client' : 'contractor'} to view final compliance breakdown</p>
-                 </div>
-               )}
+                    <span className="text-rose-600 font-mono text-xs">-${ledger.tax}</span>
+                  </div>
+                  <div className="pt-4 mt-2 border-t border-gray-200 flex justify-between items-end">
+                    <span className="text-sm font-bold text-emerald-600">Net Protocol Payout</span>
+                    <div className="text-right">
+                      <span className="text-2xl font-black text-emerald-600 font-mono leading-none">${ledger.contractor}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-6 text-center opacity-40">
+                  <AlertCircle className="w-8 h-8 text-gray-400 mb-3" />
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-relaxed">
+                    Enter protocol parameters to <br /> view automated breakdown
+                  </p>
+                </div>
+              )}
             </div>
-            
+
             <button
-               type="submit"
-               disabled={loading || !ledger}
-               className="w-full py-4 rounded-2xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-sm uppercase tracking-widest shadow-xl shadow-blue-500/20 active:scale-[0.98] transition-all"
+              type="submit"
+              disabled={loading || !ledger}
+              className="w-full group btn-primary py-5 text-sm shadow-[#867361]/20 relative overflow-hidden"
             >
-               {loading ? 'Processing Protocol...' : 'Initialize & Lock Protocol'}
+              <span className="relative z-10 flex items-center justify-center gap-3">
+                {loading ? 'Finalizing Protocol...' : 'Initialize & Deploy Protocol'}
+                {!loading && <Zap className="w-4 h-4 fill-current group-hover:scale-125 transition-transform" />}
+              </span>
             </button>
           </div>
         </form>
