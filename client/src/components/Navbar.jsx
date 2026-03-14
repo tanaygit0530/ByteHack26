@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Link, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { LogOut, User, Wallet, Plus, Loader2 } from 'lucide-react';
 
 const Navbar = ({ profile, onLogout }) => {
   const [wallet, setWallet] = useState(null);
   const [loading, setLoading] = useState(false);
+  const location = useLocation();
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   useEffect(() => {
@@ -63,26 +65,30 @@ const Navbar = ({ profile, onLogout }) => {
             <span className="text-xl font-bold text-white">Nexus</span>
           </div>
 
+          <div className="hidden md:flex items-center gap-8 ml-10">
+            <Link to="/" className={`text-sm font-medium transition-colors ${location.pathname === '/' ? 'text-white' : 'text-gray-400 hover:text-white'}`}>Escrow Hub</Link>
+            <Link to="/c2c" className={`text-sm font-medium transition-colors ${location.pathname === '/c2c' ? 'text-white' : 'text-gray-400 hover:text-white'}`}>Client ↔ Client</Link>
+            <Link to="/" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">Compliance Hub</Link>
+          </div>
+
           <div className="flex items-center gap-4">
             <div className="hidden md:flex items-center gap-4 px-4 py-2 bg-[#111827] rounded-full border border-[#2A344A] shadow-sm">
               <div className="flex items-center gap-2 text-white font-medium">
                 <Wallet className="w-4 h-4 text-blue-500" />
                 <span>${wallet?.balance?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</span>
-                {profile?.role === 'client' && (
-                  <button 
-                    onClick={handleAddFunds}
-                    disabled={loading}
-                    className="ml-2 p-1 rounded-full bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white transition-all disabled:opacity-50"
-                    title="Add Funds"
-                  >
-                    {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
-                  </button>
-                )}
+                <button 
+                  onClick={handleAddFunds}
+                  disabled={loading}
+                  className="ml-2 p-1 rounded-full bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white transition-all disabled:opacity-50"
+                  title="Add Funds"
+                >
+                  {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                </button>
               </div>
               <div className="w-px h-4 bg-[#2A344A]"></div>
               <div className="flex items-center gap-2 text-gray-400">
                 <User className="w-4 h-4" />
-                <span className="text-sm capitalize">{profile?.role}</span>
+                <span className="text-sm capitalize">{profile?.role === 'admin' ? 'System Arbiter' : (location.pathname === '/c2c' ? 'Verified Member' : profile?.role)}</span>
               </div>
             </div>
 

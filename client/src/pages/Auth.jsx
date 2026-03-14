@@ -101,8 +101,8 @@ const Auth = ({ onLogin }) => {
                     <User className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-white">Client / Funder</h3>
-                    <p className="text-xs text-gray-500">I want to fund projects and hire experts</p>
+                    <h3 className="font-bold text-white">Deal Initiator (Payer)</h3>
+                    <p className="text-xs text-gray-500">I want to fund projects or hire counterparties</p>
                   </div>
                   <ChevronRight className="ml-auto w-5 h-5 text-gray-600 group-hover:text-blue-500" />
                 </button>
@@ -115,8 +115,8 @@ const Auth = ({ onLogin }) => {
                     <Briefcase className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-white">Contractor / Agency</h3>
-                    <p className="text-xs text-gray-500">I want to execute work and secure payments</p>
+                    <h3 className="font-bold text-white">Counterparty (Receiver)</h3>
+                    <p className="text-xs text-gray-500">I want to execute protocols and secure payouts</p>
                   </div>
                   <ChevronRight className="ml-auto w-5 h-5 text-gray-600 group-hover:text-indigo-500" />
                 </button>
@@ -266,15 +266,15 @@ const Auth = ({ onLogin }) => {
                   <div className="grid grid-cols-2 gap-3 mt-6">
                     <button 
                       onClick={() => onLogin(DUMMY_PROFILES.client)}
-                      className="py-3 rounded-xl bg-[#1A2235] border border-[#2A344A] text-xs font-bold text-white hover:bg-[#1f2942] transition-all"
+                      className="py-3 rounded-xl bg-[#1A2235] border border-[#2A344A] text-[10px] font-bold text-white hover:bg-[#1f2942] transition-all"
                     >
-                      Login (Client)
+                      Login (Initiator/Payer)
                     </button>
                     <button 
                       onClick={() => onLogin(DUMMY_PROFILES.contractor)}
-                      className="py-3 rounded-xl bg-[#1A2235] border border-[#2A344A] text-xs font-bold text-white hover:bg-[#1f2942] transition-all"
+                      className="py-3 rounded-xl bg-[#1A2235] border border-[#2A344A] text-[10px] font-bold text-white hover:bg-[#1f2942] transition-all"
                     >
-                      Login (Contractor)
+                      Login (Counterparty/Receiver)
                     </button>
                     <button 
                       onClick={() => onLogin(DUMMY_PROFILES.admin)}

@@ -128,12 +128,12 @@ const ComplianceCertificateModal = ({ isOpen, onClose, agreement }) => {
                     </div>
                     <div className="space-y-2">
                         <div className="flex justify-between text-[11px]">
-                            <span className="text-gray-500">Client:</span>
-                            <span className="text-white font-bold">{report.jurisdiction.client}</span>
+                            <span className="text-gray-500">Initiator:</span>
+                            <span className="text-white font-bold">{report.jurisdiction.payer}</span>
                         </div>
                         <div className="flex justify-between text-[11px]">
-                            <span className="text-gray-500">Contractor:</span>
-                            <span className="text-white font-bold">{report.jurisdiction.contractor}</span>
+                            <span className="text-gray-500">Counterparty:</span>
+                            <span className="text-white font-bold">{report.jurisdiction.receiver}</span>
                         </div>
                     </div>
                 </div>
@@ -158,7 +158,7 @@ const ComplianceCertificateModal = ({ isOpen, onClose, agreement }) => {
                     </div>
                     <div className="pt-4 border-t border-[#2A344A] flex justify-between items-center">
                         <span className="text-[10px] font-black text-indigo-400 uppercase">Net Disbursed</span>
-                        <span className="text-xl text-emerald-400 font-black font-mono tracking-tighter">${Number(report.financials.contractor_received).toLocaleString()}</span>
+                        <span className="text-xl text-emerald-400 font-black font-mono tracking-tighter">${Number(report.financials.receiver_received || report.financials.contractor_received).toLocaleString()}</span>
                     </div>
                 </div>
             </div>
@@ -169,7 +169,7 @@ const ComplianceCertificateModal = ({ isOpen, onClose, agreement }) => {
                     Regulatory Tax Liability Statement
                 </h3>
                 <p className="text-[11px] text-amber-200/70 leading-relaxed mb-4 italic" style={{ color: 'rgba(253, 230, 138, 0.7)' }}>
-                    Based on the {report.jurisdiction.client}/{report.jurisdiction.contractor} cross-border framework, an estimated liability of <span className="text-amber-400 font-bold">{report.tax_liability_estimate.rate}</span> applies. Funds were not withheld; payment routing was executed in full to the service provider.
+                    Based on the {report.jurisdiction.payer || report.jurisdiction.client}/{report.jurisdiction.receiver || report.jurisdiction.contractor} cross-border framework, an estimated liability of <span className="text-amber-400 font-bold">{report.tax_liability_estimate.rate}</span> applies. Funds were not withheld; payment routing was executed in full to the counterparty.
                 </p>
                 <div className="flex items-center justify-between p-3 rounded-lg bg-black/40" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>
                     <span className="text-[10px] font-bold text-gray-500 uppercase">Estimated Obligation</span>

@@ -33,32 +33,31 @@ const supabase = (supabaseUrl && supabaseUrl.startsWith('http'))
 import { extractGithubDetails, fetchGithubData, analyzeRepositoryAI } from './services/verificationService.js';
 
 // Phase 1 Step 3: Immutable Fee Ledger Logic
-const calculateImmutableLedger = (amount, clientCountry, contractorCountry) => {
+const calculateImmutableLedger = (amount, payerCountry, receiverCountry) => {
   const totalAmount = parseFloat(amount);
-  const platformFeeRate = 0.01; // 1% as per Phase 1 Step 3
+  const platformFeeRate = 0.01;
   let taxReserveRate = 0.00;
 
-  // Step 1: Signup and KYC -> Jurisdiction-based tax
-  // Example: US/UK client → Indian contractor applies 10% tax reserve
-  const highTaxClients = ['USA', 'UK', 'Germany', 'France', 'Japan', 'Canada'];
-  const devContractors = ['India', 'Brazil', 'Vietnam'];
+  // Jurisdiction-based tax logic
+  const highTaxPayers = ['USA', 'UK', 'Germany', 'France', 'Japan', 'Canada'];
+  const devReceivers = ['India', 'Brazil', 'Vietnam'];
 
-  if (highTaxClients.includes(clientCountry) && devContractors.includes(contractorCountry)) {
+  if (highTaxPayers.includes(payerCountry) && devReceivers.includes(receiverCountry)) {
     taxReserveRate = 0.10;
-  } else if (clientCountry === contractorCountry) {
-    taxReserveRate = 0.05; // Base domestic compliance reserve
+  } else if (payerCountry === receiverCountry) {
+    taxReserveRate = 0.05;
   } else {
-    taxReserveRate = 0.02; // General cross-border minimal reserve
+    taxReserveRate = 0.02;
   }
 
   const platform_fee = totalAmount * platformFeeRate;
   const tax_reserve = totalAmount * taxReserveRate;
-  const contractor_amount = totalAmount - platform_fee - tax_reserve;
+  const receiver_amount = totalAmount - platform_fee - tax_reserve;
 
   return {
     platform_fee,
     tax_reserve,
-    contractor_amount
+    receiver_amount
   };
 };
 
@@ -160,37 +159,37 @@ const executeSettlement = async (agreementId, outcome, arbiterId = null, splitDa
 
     if (fetchError || !agreement) throw new Error("Agreement not found: " + (fetchError?.message || "No data"));
 
-    const { amount, contractor_id, client_id } = agreement;
-    let contractorPayout = 0;
-    let clientRefund = 0;
+    const { amount, receiver_id, payer_id } = agreement;
+    let receiverPayout = 0;
+    let payerRefund = 0;
     let status = 'SETTLED';
 
-    const { data: client } = await supabase.from('profiles').select('*').eq('id', client_id).single();
-    const { data: contractor } = await supabase.from('profiles').select('*').eq('id', contractor_id).single();
+    const { data: client } = await supabase.from('profiles').select('*').eq('id', payer_id).single();
+    const { data: contractor } = await supabase.from('profiles').select('*').eq('id', receiver_id).single();
 
-    agreement.client = client;
-    agreement.contractor = contractor;
+    agreement.payer = client;
+    agreement.receiver = contractor;
 
     if (outcome === 'CONTRACTOR_WINS') {
-        contractorPayout = parseFloat(agreement.contractor_amount);
+        receiverPayout = parseFloat(agreement.receiver_amount);
         status = 'SETTLED';
     } else if (outcome === 'CLIENT_WINS') {
-        clientRefund = parseFloat(amount); // Refund total deposit
+        payerRefund = parseFloat(amount); // Refund total deposit
         status = 'REFUNDED';
     } else if (outcome === 'PARTIAL_SETTLEMENT') {
-        const contractorCut = parseFloat(splitData.contractor_percent) / 100;
-        contractorPayout = parseFloat(amount) * contractorCut;
-        clientRefund = parseFloat(amount) - contractorPayout;
+        const receiverCut = parseFloat(splitData.contractor_percent) || parseFloat(splitData.receiver_percent) / 100;
+        receiverPayout = parseFloat(amount) * (receiverCut / 100);
+        payerRefund = parseFloat(amount) - receiverPayout;
         status = 'PARTIAL_SETTLED';
     }
 
-    // Process Contractor Payout
-    if (contractorPayout > 0) {
-      const { data: cWallet } = await supabase.from('wallets').select('id, balance').eq('owner_id', contractor_id).single();
-      await supabase.from('wallets').update({ balance: parseFloat(cWallet.balance) + contractorPayout }).eq('id', cWallet.id);
+    // Process Receiver Payout
+    if (receiverPayout > 0) {
+      const { data: cWallet } = await supabase.from('wallets').select('id, balance').eq('owner_id', receiver_id).single();
+      await supabase.from('wallets').update({ balance: parseFloat(cWallet.balance) + receiverPayout }).eq('id', cWallet.id);
       await supabase.from('transactions').insert([{
         to_wallet: cWallet.id,
-        amount: contractorPayout,
+        amount: receiverPayout,
         type: 'ESCROW_RELEASE',
         agreement_id: agreementId
       }]);
@@ -205,13 +204,13 @@ const executeSettlement = async (agreementId, outcome, arbiterId = null, splitDa
       }
     }
 
-    // Process Client Refund
-    if (clientRefund > 0) {
-      const { data: clWallet } = await supabase.from('wallets').select('id, balance').eq('owner_id', client_id).single();
-      await supabase.from('wallets').update({ balance: parseFloat(clWallet.balance) + clientRefund }).eq('id', clWallet.id);
+    // Process Payer Refund
+    if (payerRefund > 0) {
+      const { data: clWallet } = await supabase.from('wallets').select('id, balance').eq('owner_id', payer_id).single();
+      await supabase.from('wallets').update({ balance: parseFloat(clWallet.balance) + payerRefund }).eq('id', clWallet.id);
       await supabase.from('transactions').insert([{
         to_wallet: clWallet.id,
-        amount: clientRefund,
+        amount: payerRefund,
         type: 'REFUND',
         agreement_id: agreementId
       }]);
@@ -221,7 +220,7 @@ const executeSettlement = async (agreementId, outcome, arbiterId = null, splitDa
     const { data: aiReview } = await supabase.from('ai_reviews').select('ai_score').eq('agreement_id', agreementId).order('created_at', { ascending: false }).limit(1).single();
     await supabase.from('audit_logs').insert([{
         agreement_id: agreementId,
-        reviewer: arbiterId || client_id,
+        reviewer: arbiterId || payer_id,
         ai_score: aiReview?.ai_score || 0,
         decision: outcome,
         reason: outcome === 'CONTRACTOR_WINS' ? 'Satisfactory completion' : 'Arbitration resolved'
@@ -237,20 +236,20 @@ const executeSettlement = async (agreementId, outcome, arbiterId = null, splitDa
         settlement_executed: new Date().toISOString()
       },
       jurisdiction: {
-        client: agreement.client?.country || 'USA',
-        contractor: agreement.contractor?.country || 'India'
+        payer: agreement.payer?.country || 'USA',
+        receiver: agreement.receiver?.country || 'India'
       },
       financials: {
         gross: amount,
         platform_fee: agreement.platform_fee,
         tax_reserve_metadata: agreement.tax_reserve,
-        contractor_received: contractorPayout,
-        client_refunded: clientRefund
+        receiver_received: receiverPayout,
+        payer_refunded: payerRefund
       },
       tax_liability_estimate: {
         rate: "10%",
         obligation_usd: (parseFloat(amount) * 0.10).toFixed(2),
-        note: "Contractor responsible for local remittance"
+        note: "Receiver responsible for local remittance"
       },
       proof_of_work: {
         submission: latestDeliverable?.submission_url,
@@ -280,7 +279,7 @@ app.get('/', (req, res) => {
 
 // Step 2 & 3: Draft Agreement with Fee Ledger
 app.post('/api/agreements', async (req, res) => {
-  const { title, description, deliverables, amount, deadline, contractor_id, client_id, trigger_type } = req.body;
+  const { title, description, deliverables, amount, deadline, receiver_id, payer_id, trigger_type, agreement_type } = req.body;
   if (!supabase) return res.status(500).json({ error: "Supabase client not initialized" });
 
   try {
@@ -288,10 +287,10 @@ app.post('/api/agreements', async (req, res) => {
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, country')
-      .in('id', [client_id, contractor_id]);
+      .in('id', [payer_id, receiver_id]);
     
-    const client = profiles.find(p => p.id === client_id);
-    const contractor = profiles.find(p => p.id === contractor_id);
+    const client = profiles.find(p => p.id === payer_id);
+    const contractor = profiles.find(p => p.id === receiver_id);
 
     // Calculate Immutable Ledger
     const ledger = calculateImmutableLedger(amount, client?.country, contractor?.country);
@@ -305,14 +304,15 @@ app.post('/api/agreements', async (req, res) => {
       }
     };
 
-    await ensureProfile(client_id, 'Acme Corp (Client)', 'client', 'USA', 'client@nexus.com', 50000);
-    await ensureProfile(contractor_id, 'Jane Doe (Contractor)', 'contractor', 'India', 'contractor@nexus.com', 200);
+    await ensureProfile(payer_id, 'Acme Corp (Client)', 'client', 'USA', 'client@nexus.com', 50000);
+    await ensureProfile(receiver_id, 'Jane Doe (Contractor)', 'contractor', 'India', 'contractor@nexus.com', 200);
 
     const { data, error } = await supabase
       .from('agreements')
       .insert([{
-        title, description, deliverables, amount, deadline, client_id, contractor_id,
-        trigger_type: trigger_type || 'manual_review', status: 'DRAFT', ...ledger
+        title, description, deliverables, amount, deadline, payer_id, receiver_id,
+        trigger_type: trigger_type || 'manual_review', status: 'DRAFT', 
+        agreement_type: agreement_type || 'ESCROW', ...ledger
       }])
       .select().single();
 
@@ -329,7 +329,7 @@ app.post('/api/agreements/:id/fund', async (req, res) => {
   try {
     const { data: agreement, error: fetchError } = await supabase
       .from('agreements')
-      .select('amount, client_id, status')
+      .select('amount, payer_id, status')
       .eq('id', id)
       .single();
 
@@ -342,12 +342,12 @@ app.post('/api/agreements/:id/fund', async (req, res) => {
     let { data: wallet, error: walletError } = await supabase
       .from('wallets')
       .select('id, balance')
-      .eq('owner_id', agreement.client_id)
+      .eq('owner_id', agreement.payer_id)
       .single();
 
     if (walletError || !wallet) {
        // Auto-create wallet if missing
-       const { data: newWallet } = await supabase.from('wallets').insert([{ owner_id: agreement.client_id, balance: 50000 }]).select().single();
+       const { data: newWallet } = await supabase.from('wallets').insert([{ owner_id: agreement.payer_id, balance: 50000 }]).select().single();
        wallet = newWallet;
     }
 
@@ -403,7 +403,7 @@ app.post('/api/agreements/:id/reject', async (req, res) => {
 });
 
 // Phase 1 Step 4-B: Contractor Acceptance
-app.post('/api/agreements/:id/accept-contractor', async (req, res) => {
+app.post('/api/agreements/:id/accept-receiver', async (req, res) => {
   const { id } = req.params;
   try {
     const { data, error } = await supabase
@@ -417,7 +417,7 @@ app.post('/api/agreements/:id/accept-contractor', async (req, res) => {
       .single();
 
     if (error) throw error;
-    res.json({ message: 'Agreement accepted by contractor.', data });
+    res.json({ message: 'Agreement accepted by Receiver.', data });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -432,7 +432,7 @@ app.post('/api/agreements/:id/submit', async (req, res) => {
     // Fetch agreement to verify and get deliverables
     const { data: agreement, error: fetchError } = await supabase
       .from('agreements')
-      .select('contractor_id, deliverables')
+      .select('receiver_id, deliverables')
       .eq('id', id)
       .single();
 
@@ -442,7 +442,7 @@ app.post('/api/agreements/:id/submit', async (req, res) => {
     await supabase.from('deliverables').insert([{
       agreement_id: id,
       submission_url: deliverable_url,
-      submitted_by: agreement.contractor_id
+      submitted_by: agreement.receiver_id
     }]);
 
     // 1. Extract GitHub details
@@ -507,7 +507,7 @@ app.post('/api/agreements/:id/reviews', async (req, res) => {
     // 2. Step 6: Create Audit Log entry
     await supabase.from('audit_logs').insert([{
         agreement_id: id,
-        reviewer: agreement.client_id,
+        reviewer: agreement.payer_id,
         ai_score: aiReview?.ai_score || 0,
         decision,
         reason: reason || 'Human verified decision'
@@ -556,7 +556,7 @@ app.post('/api/agreements/:id/request-changes', async (req, res) => {
     // Log the request for changes
     await supabase.from('audit_logs').insert([{
         agreement_id: id,
-        reviewer: agreement.client_id,
+        reviewer: agreement.payer_id,
         ai_score: agreement.ai_score,
         decision: 'request_changes',
         reason
@@ -583,7 +583,7 @@ app.post('/api/agreements/:id/dispute', async (req, res) => {
 
     await supabase.from('audit_logs').insert([{
       agreement_id: id,
-      reviewer: agreement.client_id,
+      reviewer: agreement.payer_id,
       decision: 'DISPUTE_TRIGGERED',
       reason
     }]);

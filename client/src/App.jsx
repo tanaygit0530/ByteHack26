@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { supabase } from './lib/supabase';
 import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
+import ClientToClient from './pages/ClientToClient';
 import Auth from './pages/Auth';
 
 function App() {
@@ -82,6 +83,10 @@ function App() {
             <Route 
               path="/" 
               element={session ? <Dashboard profile={profile} refreshProfile={() => fetchLatestProfile(profile?.id)} /> : <Navigate to="/auth" />} 
+            />
+            <Route 
+              path="/c2c" 
+              element={session ? <ClientToClient profile={profile} refreshProfile={() => fetchLatestProfile(profile?.id)} /> : <Navigate to="/auth" />} 
             />
             <Route 
               path="/auth" 

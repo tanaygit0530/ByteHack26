@@ -7,7 +7,7 @@ import ComplianceCertificateModal from './ComplianceCertificateModal';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
+const AgreementCard = ({ agreement, currentUserId, index, refreshProfile, isC2CView }) => {
   const [loading, setLoading] = useState(false);
   const [auditLogs, setAuditLogs] = useState([]);
   const [aiReview, setAiReview] = useState(null);
@@ -67,8 +67,8 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
     try {
       if (action === 'fund') {
         await axios.post(`${API_BASE_URL}/agreements/${agreement.id}/fund`);
-      } else if (action === 'accept-contractor') {
-        await axios.post(`${API_BASE_URL}/agreements/${agreement.id}/accept-contractor`);
+      } else if (action === 'accept-receiver') {
+        await axios.post(`${API_BASE_URL}/agreements/${agreement.id}/accept-receiver`);
       } else if (action === 'reject-phase1') {
         const reason = prompt("Reason for rejection (e.g., Budget too high, Unrealistic deadline):");
         if (!reason) return;
@@ -95,7 +95,7 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
         if (!outcome) return;
         let split_data = null;
         if (outcome === 'PARTIAL_SETTLEMENT') {
-            const percent = prompt("Enter Contractor Percentage (0-100):");
+            const percent = prompt("Enter Counterparty Percentage (0-100):");
             split_data = { contractor_percent: percent };
         }
         await axios.post(`${API_BASE_URL}/agreements/${agreement.id}/arbitrate`, { 
@@ -116,7 +116,7 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
   const fees = {
       platform: parseFloat(agreement.platform_fee || 0).toFixed(2),
       tax: parseFloat(agreement.tax_reserve || 0).toFixed(2),
-      contractor: parseFloat(agreement.contractor_amount || 0).toFixed(2)
+      contractor: parseFloat(agreement.receiver_amount || 0).toFixed(2)
   };
 
   return (
@@ -129,12 +129,28 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
       <div className="p-8 space-y-6 flex-grow">
         <div className="flex justify-between items-start">
           <div>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-[#111827] border border-[#2A344A] text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-3">
-              Agreement ID: {agreement.id.slice(0, 8)}
-            </span>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-[#111827] border border-[#2A344A] text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                ID: {agreement.id.slice(0, 8)}
+              </span>
+              <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${isC2CView ? 'bg-indigo-500/10 border border-indigo-500/20 text-indigo-400' : 'bg-blue-500/10 border border-blue-500/20 text-blue-400'}`}>
+                {isC2CView ? 'Client ↔ Client' : 'Escrow Protocol'}
+              </span>
+            </div>
             <h3 className="text-xl font-semibold text-white group-hover:text-blue-400 transition-colors uppercase">
               {agreement.title}
             </h3>
+            <div className="flex items-center gap-2 mt-2">
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/5 border border-white/5">
+                <span className="text-[9px] font-black text-gray-500 uppercase tracking-tighter">{isC2CView ? 'Sender' : 'Client'}</span>
+                <span className="text-[11px] font-bold text-gray-300">{agreement.payer?.full_name || 'Protocol Hub'}</span>
+              </div>
+              <ArrowRight className="w-3 h-3 text-gray-600" />
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/5 border border-white/5">
+                <span className="text-[9px] font-black text-gray-500 uppercase tracking-tighter">{isC2CView ? 'Receiver' : 'Contractor'}</span>
+                <span className="text-[11px] font-bold text-gray-300">{agreement.receiver?.full_name || 'Counterparty'}</span>
+              </div>
+            </div>
           </div>
           <div className="text-right font-mono">
             <p className="text-xs text-gray-500 mb-1 tracking-widest uppercase">Escrow Value</p>
@@ -145,9 +161,9 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
         {/* Impact Parameters - Real-time Ledger Status */}
         <div className="space-y-3">
           <div className="flex justify-between text-xs font-bold uppercase tracking-widest">
-            <span className={currentStatusIndex >= 0 ? 'text-primary-400' : 'text-gray-600'}>Client</span>
+            <span className={currentStatusIndex >= 0 ? 'text-primary-400' : 'text-gray-600'}>{isC2CView ? 'Sender (Client)' : 'Initiator'}</span>
             <span className={currentStatusIndex >= 1 ? 'text-amber-400' : 'text-gray-600'}>In Vault</span>
-            <span className={currentStatusIndex >= 4 ? 'text-emerald-400' : 'text-gray-600'}>Contractor</span>
+            <span className={currentStatusIndex >= 4 ? 'text-emerald-400' : 'text-gray-600'}>{isC2CView ? 'Receiver (Client)' : 'Counterparty'}</span>
           </div>
           <div className="relative h-2 w-full bg-[#111827] rounded-full overflow-hidden border border-[#2A344A]">
             <div 
@@ -198,7 +214,7 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
               <span className="font-mono text-gray-300">-${fees.tax}</span>
             </div>
             <div className="flex justify-between text-xs py-1 font-bold pt-1 border-t border-[#2A344A]">
-              <span className="text-blue-400">Net to Contractor</span>
+              <span className="text-blue-400">{isC2CView ? 'Net to Client' : 'Net to Counterparty'}</span>
               <span className="font-mono text-emerald-400">${fees.contractor}</span>
             </div>
           </div>
@@ -218,17 +234,17 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
 
       {/* Action Buttons */}
       <div className="p-6 bg-[#111827] border-t border-[#2A344A]">
-        {agreement.status === 'DRAFT' && role === 'client' && (
+        {agreement.status === 'DRAFT' && currentUserId === agreement.payer_id && (
            <div className="w-full py-4 rounded-xl bg-blue-500/5 border border-blue-500/10 text-gray-400 font-medium flex items-center justify-center gap-2 italic text-sm">
               <Clock className="w-4 h-4" />
               Awaiting service provider acceptance...
            </div>
         )}
 
-        {agreement.status === 'DRAFT' && role === 'contractor' && (
+        {agreement.status === 'DRAFT' && currentUserId === agreement.receiver_id && (
            <div className="flex gap-3">
               <button
-                onClick={() => handleAction('accept-contractor')}
+                onClick={() => handleAction('accept-receiver')}
                 disabled={loading}
                 className="flex-[2] py-3 rounded-lg bg-blue-600 text-white font-medium flex items-center justify-center gap-2 hover:bg-blue-700 active:scale-95 transition-all shadow-md"
               >
@@ -245,7 +261,7 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
           </div>
         )}
 
-        {agreement.status === 'ACCEPTED' && role === 'client' && (
+        {agreement.status === 'ACCEPTED' && currentUserId === agreement.payer_id && (
           <div className="flex gap-3">
               <button
                 onClick={() => handleAction('fund')}
@@ -265,7 +281,7 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
           </div>
         )}
 
-        {agreement.status === 'ACCEPTED' && role === 'contractor' && (
+        {agreement.status === 'ACCEPTED' && currentUserId === agreement.receiver_id && (
             <div className="w-full py-4 rounded-xl bg-amber-500/5 border border-amber-500/10 text-amber-500/70 font-medium flex items-center justify-center gap-2 italic text-sm">
                 <Clock className="w-4 h-4" />
                 Awaiting client deposit...
@@ -283,7 +299,7 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
             </div>
         )}
 
-        {agreement.status === 'FUNDED_AND_LOCKED' && role === 'contractor' && (
+        {agreement.status === 'FUNDED_AND_LOCKED' && currentUserId === agreement.receiver_id && (
           <button
             onClick={() => handleAction('submit')}
             disabled={loading}
@@ -331,7 +347,7 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
            </div>
         </div>
       )}
-        {agreement.status === 'AI_VERIFIED' && role === 'client' && (
+        {agreement.status === 'AI_VERIFIED' && currentUserId === agreement.payer_id && (
           <div className="space-y-3 mt-4">
               <div className="flex gap-3">
                   <button
@@ -354,7 +370,7 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
           </div>
         )}
 
-        {agreement.status === 'DISPUTED' && role === 'client' && (
+        {agreement.status === 'DISPUTED' && currentUserId === agreement.payer_id && (
            <button 
              onClick={() => handleAction('escalate')}
              disabled={loading}
@@ -365,7 +381,7 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
            </button>
         )}
 
-        {agreement.status === 'ARBITRATION' && role === 'admin' && (
+        {agreement.status === 'ARBITRATION' && false /* admin role removed from card logic */ && (
           <div className="mt-4 p-4 rounded-2xl bg-indigo-900/20 border border-indigo-500/30">
             <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-3 text-center">Protocol Arbiter Panel</h4>
             <div className="grid grid-cols-1 gap-2">
@@ -388,7 +404,7 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
             </div>
         )}
 
-        {agreement.status === 'DISPUTED' && role === 'contractor' && (
+        {agreement.status === 'DISPUTED' && currentUserId === agreement.receiver_id && (
           <button 
             onClick={() => handleAction('submit')}
             disabled={loading}
@@ -402,11 +418,11 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
         {agreement.status === 'REFUNDED' && (
            <div className="w-full py-4 rounded-xl bg-gray-500/10 border border-gray-500/20 text-gray-400 font-bold flex items-center justify-center gap-2 mt-4">
               <AlertCircle className="w-5 h-5" /> 
-              Capital Refunded to Client
+              Capital Refunded to Initiator
            </div>
         )}
 
-        {agreement.status === 'APPROVED' && role === 'client' && (
+        {agreement.status === 'APPROVED' && currentUserId === agreement.payer_id && (
           <button
             onClick={() => handleAction('settle')}
             disabled={loading}
@@ -460,21 +476,21 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
            </div>
         )}
 
-        {agreement.status === 'DRAFT' && role === 'contractor' && (
+        {agreement.status === 'DRAFT' && currentUserId === agreement.receiver_id && (
             <div className="w-full py-4 flex items-center justify-center text-gray-500 italic text-sm">
                 Awaiting client funding...
             </div>
         )}
 
-        {agreement.status === 'IN_REVIEW' && role === 'contractor' && (
+        {agreement.status === 'IN_REVIEW' && currentUserId === agreement.receiver_id && (
             <div className="w-full py-4 flex items-center justify-center text-gray-500 italic text-sm">
                 AI verification in progress...
             </div>
         )}
 
-        {agreement.status === 'AI_VERIFIED' && role === 'contractor' && (
+        {agreement.status === 'AI_VERIFIED' && currentUserId === agreement.receiver_id && (
             <div className="w-full py-4 flex items-center justify-center text-purple-400 font-bold text-sm">
-                AI Verification Complete. Awaiting Client Approval...
+                AI Verification Complete. Awaiting Initiator Approval...
             </div>
         )}
 
@@ -485,7 +501,7 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
             </div>
         )}
 
-        {agreement.status === 'APPROVED' && role === 'contractor' && (
+        {agreement.status === 'APPROVED' && currentUserId === agreement.receiver_id && (
             <div className="w-full py-4 flex items-center justify-center text-gray-500 italic text-sm">
                 Awaiting final disbursement...
             </div>

@@ -17,7 +17,7 @@ CREATE TABLE public.profiles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   full_name TEXT,
   email TEXT UNIQUE,
-  role TEXT CHECK (role IN ('client','contractor','admin')),
+  role TEXT,
   country TEXT,
   company_type TEXT,
   kyc_status TEXT DEFAULT 'PENDING',
@@ -51,10 +51,13 @@ CREATE TABLE public.agreements (
   amount DECIMAL(15,2) NOT NULL,
   deadline DATE,
 
-  client_id UUID REFERENCES public.profiles(id),
-  contractor_id UUID REFERENCES public.profiles(id),
+  party_a_id UUID REFERENCES public.profiles(id),
+  party_b_id UUID REFERENCES public.profiles(id),
+  payer_id UUID REFERENCES public.profiles(id),
+  receiver_id UUID REFERENCES public.profiles(id),
 
   status TEXT DEFAULT 'DRAFT',
+  agreement_type TEXT DEFAULT 'ESCROW', -- 'ESCROW' or 'C2C'
 
   trigger_type TEXT DEFAULT 'manual_review',
   
@@ -64,7 +67,7 @@ CREATE TABLE public.agreements (
 
   platform_fee DECIMAL(15,2),
   tax_reserve DECIMAL(15,2),
-  contractor_amount DECIMAL(15,2),
+  receiver_amount DECIMAL(15,2),
   compliance_report JSONB DEFAULT '{}',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()) NOT NULL

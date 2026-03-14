@@ -4,9 +4,9 @@ import { supabase } from '../lib/supabase';
 import { X, Calendar, DollarSign, User, FileText, Globe, Zap, AlertCircle, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const CreateAgreementModal = ({ onClose, refresh, profile }) => {
+const CreateAgreementModal = ({ onClose, refresh, profile, isC2CView }) => {
   const [loading, setLoading] = useState(false);
-  const [contractors, setContractors] = useState([]);
+  const [contractors, setCounterpartys] = useState([]);
   const [ledger, setLedger] = useState(null);
   const [formData, setFormData] = useState({
     title: '',
@@ -14,45 +14,61 @@ const CreateAgreementModal = ({ onClose, refresh, profile }) => {
     deliverables: '',
     amount: '',
     deadline: '',
-    contractor_id: '',
+    receiver_id: '',
     trigger_type: 'manual_review'
   });
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   useEffect(() => {
-    fetchContractors();
+    fetchCounterpartys();
   }, []);
 
-  // Recalculate ledger whenever amount or contractor changes
+  // Recalculate ledger whenever amount or counterparty changes
   useEffect(() => {
-    if (formData.amount && formData.contractor_id) {
+    if (formData.amount && formData.receiver_id) {
        calculateFees();
     } else {
        setLedger(null);
     }
-  }, [formData.amount, formData.contractor_id]);
+  }, [formData.amount, formData.receiver_id]);
 
-  const fetchContractors = async () => {
+  const fetchCounterpartys = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('profiles')
         .select('id, full_name, country')
-        .eq('role', 'contractor');
+        .neq('id', profile?.id);
+      
+      if (isC2CView) {
+        // C2C: Clients find other Clients
+        query = query.eq('role', 'client');
+      } else {
+        // Escrow Hub: Clients find Contractors, Contractors find Clients
+        if (profile?.role === 'client') {
+          query = query.eq('role', 'contractor');
+        } else {
+          query = query.eq('role', 'client');
+        }
+      }
+
+      const { data, error } = await query;
       
       if (!error && data && data.length > 0) {
-        setContractors(data);
+        setCounterpartys(data);
       } else {
-        setContractors([{
+        const dummyLabel = isC2CView ? 'Client' : 'Contractor';
+        setCounterpartys([{
           id: '22222222-2222-2222-2222-222222222222',
-          full_name: 'Jane Doe (Contractor)',
+          full_name: `Jane Doe (${dummyLabel})`,
           country: 'India'
         }]);
       }
     } catch {
-        setContractors([{
+        const dummyLabel = isC2CView ? 'Client' : 'Contractor';
+        setCounterpartys([{
           id: '22222222-2222-2222-2222-222222222222',
-          full_name: 'Jane Doe (Contractor)',
+          full_name: `Jane Doe (${dummyLabel})`,
           country: 'India'
         }]);
     }
@@ -63,7 +79,7 @@ const CreateAgreementModal = ({ onClose, refresh, profile }) => {
     if (!amount) return;
     
     // Simulate server ledger logic locally for UX
-    const contractor = contractors.find(c => c.id === formData.contractor_id);
+    const contractor = contractors.find(c => c.id === formData.receiver_id);
     const clientCountry = profile?.country || 'USA';
     const contractorCountry = contractor?.country || 'India';
     
@@ -87,10 +103,34 @@ const CreateAgreementModal = ({ onClose, refresh, profile }) => {
     setLoading(true);
 
     try {
-      await axios.post(`${API_BASE_URL}/agreements`, {
-        ...formData,
-        client_id: profile.id
-      });
+      const payload = {
+        title: formData.title,
+        description: formData.description,
+        deliverables: formData.deliverables,
+        amount: formData.amount,
+        deadline: formData.deadline,
+        trigger_type: formData.trigger_type,
+        agreement_type: isC2CView ? 'C2C' : 'ESCROW'
+      };
+
+      // Smart Role Assignment
+      if (isC2CView) {
+        // P2P: Initiator is payer
+        payload.payer_id = profile.id;
+        payload.receiver_id = formData.receiver_id;
+      } else {
+        // Escrow Hub: Enforce Client/Contractor relationship
+        if (profile.role === 'client') {
+          payload.payer_id = profile.id;
+          payload.receiver_id = formData.receiver_id;
+        } else {
+          // If a contractor creates the agreement, the selected person (Client) is the payer
+          payload.payer_id = formData.receiver_id;
+          payload.receiver_id = profile.id;
+        }
+      }
+
+      await axios.post(`${API_BASE_URL}/agreements`, payload);
       refresh();
       onClose();
     } catch (error) {
@@ -120,9 +160,9 @@ const CreateAgreementModal = ({ onClose, refresh, profile }) => {
           <div>
             <div className="flex items-center gap-2 mb-1">
                <Zap className="w-5 h-5 text-blue-500 fill-blue-500" />
-               <h2 className="text-2xl font-bold text-white">Draft Smart Agreement</h2>
+               <h2 className="text-2xl font-bold text-white">{isC2CView ? 'Client ↔ Client Agreement' : 'Draft Smart Agreement'}</h2>
             </div>
-            <p className="text-sm text-gray-400 font-medium">Phase 1: Immutable Protocol Handshake</p>
+            <p className="text-sm text-gray-400 font-medium">{isC2CView ? 'Peer-to-Peer Protocol Initialization' : 'Phase 1: Immutable Protocol Handshake'}</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full text-gray-400 hover:text-white transition-colors">
             <X className="w-6 h-6" />
@@ -178,16 +218,16 @@ const CreateAgreementModal = ({ onClose, refresh, profile }) => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Service Provider</label>
+              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{isC2CView ? 'Target Client' : (profile?.role === 'contractor' ? 'Target Client' : 'Service Provider')}</label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
                 <select
                   required
                   className="w-full pl-10 h-[42px]"
-                  value={formData.contractor_id}
-                  onChange={(e) => setFormData({...formData, contractor_id: e.target.value})}
+                  value={formData.receiver_id}
+                  onChange={(e) => setFormData({...formData, receiver_id: e.target.value})}
                 >
-                  <option value="">Select Contractor...</option>
+                  <option value="">{isC2CView ? 'Select Client...' : (profile?.role === 'contractor' ? 'Select Client...' : 'Select Service Provider...')}</option>
                   {contractors.map(c => (
                     <option key={c.id} value={c.id}>{c.full_name} ({c.country})</option>
                   ))}
@@ -203,7 +243,7 @@ const CreateAgreementModal = ({ onClose, refresh, profile }) => {
                   value={formData.trigger_type}
                   onChange={(e) => setFormData({...formData, trigger_type: e.target.value})}
                 >
-                  <option value="manual_review">Manual Client Approval</option>
+                  <option value="manual_review">Manual Initiator Approval</option>
                   <option value="github_pr">GitHub PR Merge (Automated)</option>
                 </select>
             </div>
@@ -257,7 +297,7 @@ const CreateAgreementModal = ({ onClose, refresh, profile }) => {
                       <span className="text-white/60 font-mono">-${ledger.tax}</span>
                    </div>
                    <div className="pt-3 border-t border-white/5 flex justify-between items-center">
-                      <span className="text-sm font-bold text-emerald-400">Net Contractor</span>
+                      <span className="text-sm font-bold text-emerald-400">{isC2CView ? 'Net to Client' : 'Net to Contractor'}</span>
                       <span className="text-lg font-black text-emerald-400 font-mono">${ledger.contractor}</span>
                    </div>
                  </div>
@@ -266,7 +306,7 @@ const CreateAgreementModal = ({ onClose, refresh, profile }) => {
                     <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mb-2">
                        <AlertCircle className="w-4 h-4 text-gray-600" />
                     </div>
-                    <p className="text-[10px] text-gray-600 italic">Enter budget and contractor to view final compliance breakdown</p>
+                    <p className="text-[10px] text-gray-600 italic">Enter budget and {isC2CView ? 'client' : 'contractor'} to view final compliance breakdown</p>
                  </div>
                )}
             </div>

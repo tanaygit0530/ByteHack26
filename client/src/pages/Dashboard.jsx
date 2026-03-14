@@ -5,7 +5,7 @@ import AgreementCard from '../components/AgreementCard';
 import CreateAgreementModal from '../components/CreateAgreementModal';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const Dashboard = ({ profile, refreshProfile }) => {
+const Dashboard = ({ profile, refreshProfile, isC2CView }) => {
   const [agreements, setAgreements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -28,11 +28,23 @@ const Dashboard = ({ profile, refreshProfile }) => {
   const fetchAgreements = async () => {
     if (!profile) return;
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('agreements')
-        .select('*')
-        .or(`client_id.eq.${profile.id},contractor_id.eq.${profile.id}`)
+        .select(`
+          *,
+          payer:profiles!payer_id(full_name),
+          receiver:profiles!receiver_id(full_name)
+        `)
+        .or(`payer_id.eq.${profile.id},receiver_id.eq.${profile.id}`)
         .order('created_at', { ascending: false });
+
+      if (isC2CView) {
+        query = query.eq('agreement_type', 'C2C');
+      } else {
+        query = query.eq('agreement_type', 'ESCROW');
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setAgreements(data);
@@ -62,18 +74,16 @@ const Dashboard = ({ profile, refreshProfile }) => {
         <div>
           <h1 className="text-2xl font-semibold text-white mb-2">Welcome back, {profile?.full_name?.split(' ')[0]}</h1>
           <p className="text-gray-400 text-base">
-            Manage your programmable cross-border escrow agreements.
+            {isC2CView ? 'Manage your peer-to-peer client agreements.' : 'Manage your programmable cross-border escrow agreements.'}
           </p>
         </div>
-        {profile?.role === 'client' && (
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all shadow-md active:scale-95"
-          >
-            <Plus className="w-5 h-5" />
-            Create Agreement
-          </button>
-        )}
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all shadow-md active:scale-95"
+        >
+          <Plus className="w-5 h-5" />
+          {isC2CView ? 'Create Client Agreement' : 'Create Agreement'}
+        </button>
       </div>
 
       {/* Stats Grid */}
@@ -105,7 +115,7 @@ const Dashboard = ({ profile, refreshProfile }) => {
       {/* Main Content */}
       <div className="rounded-xl bg-[#111827] border border-[#2A344A] p-8 mt-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-white">Your Agreements</h2>
+          <h2 className="text-lg font-semibold text-white">{isC2CView ? 'Client ↔ Client Protocols' : 'Your Agreements'}</h2>
           <div className="flex items-center gap-2 text-sm text-gray-400 bg-[#1A2235] border border-[#2A344A] py-1 px-3 rounded-full">
             <Info className="w-4 h-4" />
             <span>Updates in real-time</span>
@@ -122,9 +132,10 @@ const Dashboard = ({ profile, refreshProfile }) => {
               <AgreementCard 
                 key={agreement.id} 
                 agreement={agreement} 
-                role={profile?.role} 
+                currentUserId={profile?.id}
                 index={i}
                 refreshProfile={refreshProfile}
+                isC2CView={isC2CView}
               />
             ))}
           </div>
@@ -135,16 +146,14 @@ const Dashboard = ({ profile, refreshProfile }) => {
             </div>
             <h3 className="text-lg font-semibold text-white mb-2">No agreements yet</h3>
             <p className="text-gray-400 mb-6 max-w-sm mx-auto">
-              Start by creating a new programmable escrow agreement.
+              {isC2CView ? 'Start by creating a new peer-to-peer client agreement.' : 'Start by creating a new programmable escrow agreement.'}
             </p>
-            {profile?.role === 'client' && (
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-md"
-              >
-                Create Agreement <ArrowRight className="w-4 h-4" />
-              </button>
-            )}
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-md"
+            >
+              Create Agreement <ArrowRight className="w-4 h-4" />
+            </button>
           </div>
         )}
       </div>
@@ -155,6 +164,7 @@ const Dashboard = ({ profile, refreshProfile }) => {
             onClose={() => setIsModalOpen(false)} 
             refresh={fetchAgreements} 
             profile={profile}
+            isC2CView={isC2CView}
           />
         )}
       </AnimatePresence>
