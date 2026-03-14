@@ -58,9 +58,8 @@ const Navbar = ({ profile, onLogout }) => {
   };
 
   const navLinks = [
-    { name: 'Escrow Hub', path: '/' },
-    { name: 'Client ↔ Client', path: '/c2c' },
-    { name: 'Compliance Hub', path: '/compliance' },
+    { name: 'Agreements', path: '/' },
+    { name: 'C2C Deals', path: '/c2c' },
   ];
 
   return (

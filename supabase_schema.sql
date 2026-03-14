@@ -22,6 +22,13 @@ CREATE TABLE public.profiles (
   company_type TEXT,
   kyc_status TEXT DEFAULT 'PENDING',
   jurisdiction_metadata JSONB DEFAULT '{}',
+  
+  -- Contractor Trust Metrics
+  total_projects INTEGER DEFAULT 0,
+  completed_projects INTEGER DEFAULT 0,
+  total_disputes INTEGER DEFAULT 0,
+  resolved_disputes INTEGER DEFAULT 0,
+  
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()) NOT NULL
 );
 
@@ -66,7 +73,9 @@ CREATE TABLE public.agreements (
   domain_match BOOLEAN,
 
   platform_fee DECIMAL(15,2),
-  tax_reserve DECIMAL(15,2),
+  gst_amount DECIMAL(15,2),
+  digital_service_tax DECIMAL(15,2),
+  estimated_tax DECIMAL(15,2), -- Added for Phase 4
   receiver_amount DECIMAL(15,2),
   compliance_report JSONB DEFAULT '{}',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()) NOT NULL,
@@ -246,6 +255,66 @@ VALUES
 'VERIFIED',
 '{"tax_regime":"IN-Resident"}'
 );
+
+-- ================================
+-- 11. TAX RECORDS
+-- ================================
+
+CREATE TABLE public.tax_records (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  agreement_id UUID REFERENCES public.agreements(id),
+  total_amount DECIMAL(15,2),
+  platform_fee DECIMAL(15,2),
+  jurisdiction_client TEXT,
+  jurisdiction_contractor TEXT,
+  estimated_tax DECIMAL(15,2),
+  net_payout DECIMAL(15,2),
+  status TEXT DEFAULT 'liability_recorded',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()) NOT NULL
+);
+
+-- ================================
+-- 12. DISPUTES
+-- ================================
+
+CREATE TABLE public.disputes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  agreement_id UUID REFERENCES public.agreements(id),
+  raised_by UUID REFERENCES public.profiles(id),
+  reason TEXT,
+  evidence_url TEXT,
+  resolution TEXT,
+  status TEXT DEFAULT 'OPEN', -- 'OPEN', 'RESOLVED', 'CLOSED'
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()) NOT NULL,
+  resolved_at TIMESTAMP WITH TIME ZONE
+);
+
+-- ================================
+-- 13. ENABLE RLS
+-- ================================
+
+ALTER TABLE public.tax_records ENABLE ROW LEVEL SECURITY;
+CREATE TABLE public.settlement_certificates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  agreement_id UUID REFERENCES public.agreements(id),
+  tx_hash TEXT UNIQUE,
+  certificate_data JSONB,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()) NOT NULL
+);
+
+ALTER TABLE public.disputes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.settlement_certificates ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Public tax records access" ON public.tax_records FOR ALL USING (true);
+CREATE POLICY "Public disputes access" ON public.disputes FOR ALL USING (true);
+CREATE POLICY "Public certificates access" ON public.settlement_certificates FOR ALL USING (true);
+
+-- ================================
+-- 14. ENABLE REALTIME
+-- ================================
+
+ALTER PUBLICATION supabase_realtime ADD TABLE public.tax_records;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.disputes;
 
 -- CREATE DEMO WALLETS
 

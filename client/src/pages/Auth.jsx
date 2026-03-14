@@ -104,14 +104,14 @@ const Auth = ({ onLogin }) => {
                   transition={{ delay: 0.2 }}
                 >
                   <span className="inline-block px-4 py-1.5 rounded-full bg-[#867361]/10 border border-[#867361]/20 text-[#867361] text-xs font-bold uppercase tracking-widest mb-6">
-                    Professional Escrow Solution
+                    Professional Payment Protection
                   </span>
                   <h1 className="text-5xl lg:text-7xl font-extrabold text-[#1a1a1a] leading-[1.1] mb-6 tracking-tighter">
                     Never buy or sell <br />
                     <span className="gradient-text italic">without Nexus.</span>
                   </h1>
                   <p className="text-xl text-gray-600 max-w-xl mb-10 leading-relaxed font-medium">
-                    The world's most programmable, cross-border escrow protocol. Secure your digital assets, services, and transactions with cryptographic trust.
+                    The world's easiest cross-border payment system. Secure your deals, services, and payments with guaranteed trust.
                   </p>
 
                   <div className="flex flex-wrap gap-4">
@@ -119,7 +119,7 @@ const Auth = ({ onLogin }) => {
                       onClick={() => setView('signup')}
                       className="group btn-primary px-8 py-4 text-base flex items-center gap-2"
                     >
-                      Start Secure Transaction
+                      Start Smart Agreement
                       <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                     </button>
                     <button className="btn-secondary px-8 py-4 text-base flex items-center gap-2 border-[#d4d4d4]">
@@ -139,7 +139,7 @@ const Auth = ({ onLogin }) => {
                     </div>
                     <div className="flex items-center gap-2">
                       <Server className="w-5 h-5" />
-                      <span className="text-sm font-bold">Immutable Ledger</span>
+                      <span className="text-sm font-bold">Secure History</span>
                     </div>
                   </div>
                 </motion.div>
@@ -156,7 +156,7 @@ const Auth = ({ onLogin }) => {
                 <div className="relative glass-card rounded-3xl p-8 border border-gray-200 shadow-xl overflow-hidden min-h-[500px] bg-white">
                   <div className="flex justify-between items-center mb-10">
                     <div>
-                      <h3 className="text-xl font-bold text-[#1a1a1a]">Active Transactions</h3>
+                      <h3 className="text-xl font-bold text-[#1a1a1a]">Active Deals</h3>
                       <p className="text-sm text-gray-500 font-medium">Total volume: $42,500.00</p>
                     </div>
                     <div className="flex -space-x-3">
@@ -170,7 +170,7 @@ const Auth = ({ onLogin }) => {
 
                   <div className="space-y-4">
                     {[
-                      { icon: Briefcase, title: 'Web Development Project', amount: '$4,500', status: 'In Escrow', color: '867361' },
+                      { icon: Briefcase, title: 'Web Development Project', amount: '$4,500', status: 'Funds Secured', color: '867361' },
                       { icon: Globe, title: 'Domain Transfer (.ai)', amount: '$12,000', status: 'Validation', color: '9d9286' },
                       { icon: CreditCard, title: 'SaaS Acquisition', amount: '$26,000', status: 'Payment Due', color: '1a1a1a' },
                     ].map((item, idx) => (
@@ -209,11 +209,11 @@ const Auth = ({ onLogin }) => {
 
               <div className="grid md:grid-cols-5 gap-6 max-w-7xl mx-auto">
                 {[
-                  { step: 1, icon: User, text: "Initiator & Counterparty agree terms", title: "Agreement" },
-                  { step: 2, icon: CreditCard, text: "Payer submits payment to Escrow", title: "Funding" },
-                  { step: 3, icon: Briefcase, text: "Counterparty delivers service/asset", title: "Delivery" },
-                  { step: 4, icon: CheckCircle2, text: "Payer approves goods or service", title: "Approval" },
-                  { step: 5, icon: LockIcon, text: "Escrow protocol releases funds", title: "Release" },
+                  { step: 1, icon: User, text: "Client & Contractor agree terms", title: "Agreement" },
+                  { step: 2, icon: CreditCard, text: "Client deposits funds securely", title: "Funding" },
+                  { step: 3, icon: Briefcase, text: "Contractor delivers the work", title: "Delivery" },
+                  { step: 4, icon: CheckCircle2, text: "Client approves the work", title: "Approval" },
+                  { step: 5, icon: LockIcon, text: "Nexus system releases funds", title: "Release" },
                 ].map((item, idx) => (
                   <div key={idx} className="relative group p-6 rounded-[24px] glass-card hover:border-[#867361]/40 transition-all text-center">
                     <div className="absolute -top-3 -left-3 w-8 h-8 rounded-full bg-[#867361] text-white font-bold flex items-center justify-center text-xs">
@@ -276,19 +276,19 @@ const Auth = ({ onLogin }) => {
                           onClick={() => onLogin(DUMMY_PROFILES.client)}
                           className="btn-primary py-4 text-sm font-bold shadow-brown20"
                         >
-                          Login as Deal Initiator
+                          Login as Client
                         </button>
                         <button
                           onClick={() => onLogin(DUMMY_PROFILES.contractor)}
                           className="btn-secondary py-4 text-sm font-bold border-gray-200"
                         >
-                          Login as Counterparty
+                          Login as Contractor
                         </button>
                         <button
                           onClick={() => onLogin(DUMMY_PROFILES.admin)}
                           className="mt-4 py-3 bg-[#867361]/5 border border-[#867361]/20 text-[#867361] text-[10px] font-black uppercase tracking-[0.2em] rounded-xl hover:bg-[#867361] hover:text-white transition-all"
                         >
-                          Protocol Arbiter Node Access
+                          System Admin Access
                         </button>
                       </div>
                     </div>
@@ -316,7 +316,7 @@ const Auth = ({ onLogin }) => {
                         <button onClick={() => setView('landing')} className="text-xs text-gray-500 hover:text-[#867361] font-bold mb-8 flex items-center gap-1 transition-colors uppercase tracking-widest">
                           ← Home
                         </button>
-                        <h2 className="text-3xl font-extrabold text-[#1a1a1a] tracking-tight mb-8">Choose Your Protocol Role</h2>
+                        <h2 className="text-3xl font-extrabold text-[#1a1a1a] tracking-tight mb-8">Choose Your Role</h2>
                         <div className="grid gap-4">
                           <button
                             onClick={() => setRole('client')}
@@ -326,8 +326,8 @@ const Auth = ({ onLogin }) => {
                               <User className="w-7 h-7" />
                             </div>
                             <div>
-                              <h3 className="font-extrabold text-[#1a1a1a] text-lg">Deal Initiator</h3>
-                              <p className="text-sm text-gray-500 font-medium">Payer / Service Receiver</p>
+                              <h3 className="font-extrabold text-[#1a1a1a] text-lg">Client</h3>
+                              <p className="text-sm text-gray-500 font-medium">Payer / Hirer</p>
                             </div>
                             <ChevronRight className="ml-auto w-6 h-6 text-gray-300 group-hover:text-[#867361] transition-colors" />
                           </button>
@@ -339,8 +339,8 @@ const Auth = ({ onLogin }) => {
                               <Briefcase className="w-7 h-7" />
                             </div>
                             <div>
-                              <h3 className="font-extrabold text-[#1a1a1a] text-lg">Counterparty</h3>
-                              <p className="text-sm text-gray-500 font-medium">Receiver / Service Provider</p>
+                              <h3 className="font-extrabold text-[#1a1a1a] text-lg">Contractor</h3>
+                              <p className="text-sm text-gray-500 font-medium">Receiver / Freelancer</p>
                             </div>
                             <ChevronRight className="ml-auto w-6 h-6 text-gray-300 group-hover:text-[#9d9286] transition-colors" />
                           </button>
@@ -382,8 +382,8 @@ const Auth = ({ onLogin }) => {
                               <div className="space-y-8">
                                 <div className="w-14 h-14 border-4 border-gray-100 border-t-[#867361] rounded-full animate-spin mx-auto" />
                                 <div className="space-y-2">
-                                  <p className="text-base text-[#1a1a1a] font-bold">Executing Cross-Border Validation</p>
-                                  <p className="text-sm text-gray-500 font-medium">Validating tax regimes & legal standing...</p>
+                                  <p className="text-base text-[#1a1a1a] font-bold">Starting Security Check</p>
+                                  <p className="text-sm text-gray-500 font-medium">Verifying details for a safe deal...</p>
                                 </div>
                               </div>
                             ) : (
@@ -393,9 +393,9 @@ const Auth = ({ onLogin }) => {
                                 </div>
                                 <div className="space-y-2">
                                   <h3 className="text-2xl font-extrabold text-[#1a1a1a] tracking-tight">Identity Fully Verified</h3>
-                                  <p className="text-sm text-gray-500 font-medium">Protocol parameters have been synchronized.</p>
+                                  <p className="text-sm text-gray-500 font-medium">Your profile is ready.</p>
                                 </div>
-                                <button onClick={handleAuthAction} className="btn-primary w-full bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/10 py-4 font-bold">Access Secured Dashboard</button>
+                                <button onClick={handleAuthAction} className="btn-primary w-full bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/10 py-4 font-bold">Go to Dashboard</button>
                               </motion.div>
                             )}
                           </div>

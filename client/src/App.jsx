@@ -5,6 +5,7 @@ import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
 import ClientToClient from './pages/ClientToClient';
 import Auth from './pages/Auth';
+import AdminDashboard from './pages/AdminDashboard';
 import Background from './components/Background';
 
 function App() {
@@ -80,24 +81,36 @@ function App() {
     <Router>
       <div className="min-h-screen bg-[#fcfcfc] text-[#1a1a1a] flex flex-col">
         <Background />
-        {session && <Navbar profile={profile} onLogout={handleLogout} />}
-        <main className={session ? "flex-1 max-w-7xl mx-auto px-6 py-8 w-full" : "flex-1 w-full"}>
-          <Routes>
-            <Route
-              path="/"
-              element={session ? <Dashboard profile={profile} refreshProfile={() => fetchLatestProfile(profile?.id)} /> : <Navigate to="/auth" />}
-            />
+        <Routes>
+          {/* Admin Route - Isolated */}
+          <Route path="/admin" element={<AdminDashboard />} />
 
-            <Route
-              path="/c2c"
-              element={session ? <ClientToClient profile={profile} refreshProfile={() => fetchLatestProfile(profile?.id)} /> : <Navigate to="/auth" />}
-            />
-            <Route
-              path="/auth"
-              element={!session ? <Auth onLogin={handleLogin} /> : <Navigate to="/" />}
-            />
-          </Routes>
-        </main>
+          {/* Main App Routes */}
+          <Route
+            path="*"
+            element={
+              <>
+                {session && <Navbar profile={profile} onLogout={handleLogout} />}
+                <main className={session ? "flex-1 max-w-7xl mx-auto px-6 py-8 w-full" : "flex-1 w-full"}>
+                  <Routes>
+                    <Route
+                      path="/"
+                      element={session ? <Dashboard profile={profile} refreshProfile={() => fetchLatestProfile(profile?.id)} /> : <Navigate to="/auth" />}
+                    />
+                    <Route
+                      path="/c2c"
+                      element={session ? <ClientToClient profile={profile} refreshProfile={() => fetchLatestProfile(profile?.id)} /> : <Navigate to="/auth" />}
+                    />
+                    <Route
+                      path="/auth"
+                      element={!session ? <Auth onLogin={handleLogin} /> : <Navigate to="/" />}
+                    />
+                  </Routes>
+                </main>
+              </>
+            }
+          />
+        </Routes>
       </div>
     </Router>
   );

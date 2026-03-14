@@ -36,7 +36,7 @@ const CreateAgreementModal = ({ onClose, refresh, profile, isC2CView }) => {
     try {
       let query = supabase
         .from('profiles')
-        .select('id, full_name, country')
+        .select('id, full_name, country, total_projects, completed_projects, total_disputes, resolved_disputes')
         .neq('id', profile?.id);
 
       if (isC2CView) {
@@ -152,11 +152,11 @@ const CreateAgreementModal = ({ onClose, refresh, profile, isC2CView }) => {
                 <Zap className="w-5 h-5 fill-current" />
               </div>
               <h2 className="text-3xl font-extrabold text-[#1a1a1a] tracking-tight">
-                {isC2CView ? 'Initiate P2P Protocol' : 'Draft Secure Agreement'}
+                {isC2CView ? 'New C2C Deal' : 'New Smart Agreement'}
               </h2>
             </div>
             <p className="text-gray-500 font-medium tracking-wide">
-              {isC2CView ? 'Peer-to-Peer Cryptographic Handshake' : 'Phase 1: Defining Immutable Protocol Parameters'}
+              {isC2CView ? 'Direct Client to Client Agreement' : 'Step 1: Define Agreement & Payment Terms'}
             </p>
           </div>
           <button onClick={onClose} className="p-3 hover:bg-gray-100 rounded-2xl text-gray-400 hover:text-[#1a1a1a] transition-all">
@@ -173,7 +173,7 @@ const CreateAgreementModal = ({ onClose, refresh, profile, isC2CView }) => {
                 <input
                   required
                   className="w-full pl-12 pr-4 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:border-[#867361]/50 focus:bg-white transition-all outline-none text-[#1a1a1a] font-medium"
-                  placeholder="e.g. Frontend Development Protocol"
+                  placeholder="e.g. Design & Development Service"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 />
@@ -211,8 +211,8 @@ const CreateAgreementModal = ({ onClose, refresh, profile, isC2CView }) => {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Counterparty</label>
+            <div className="space-y-4">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Contractor</label>
               <div className="group relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-[#867361] transition-colors" />
                 <select
@@ -227,10 +227,57 @@ const CreateAgreementModal = ({ onClose, refresh, profile, isC2CView }) => {
                   ))}
                 </select>
               </div>
+
+              {formData.receiver_id && (
+                <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-between">
+                  {(() => {
+                    const c = contractors.find(cont => cont.id === formData.receiver_id);
+                    if (!c) return null;
+                    const disputeRate = c.completed_projects > 0 ? (c.total_disputes / c.completed_projects) * 100 : 0;
+                    let healthColor = 'text-emerald-500';
+                    let healthBg = 'bg-emerald-50';
+                    let healthLabel = 'TRUSTED CONTRACTOR';
+                    let Dot = '🟢';
+
+                    if (disputeRate >= 15) {
+                      healthColor = 'text-rose-500';
+                      healthBg = 'bg-rose-50';
+                      healthLabel = 'HIGH RISK';
+                      Dot = '🔴';
+                    } else if (disputeRate >= 5) {
+                      healthColor = 'text-amber-500';
+                      healthBg = 'bg-amber-50';
+                      healthLabel = 'MODERATE RISK';
+                      Dot = '🟡';
+                    }
+
+                    return (
+                      <>
+                        <div className="flex flex-col">
+                          <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Health Score</span>
+                          <span className={`text-[10px] font-black ${healthColor} flex items-center gap-1.5 uppercase mt-0.5`}>
+                            {Dot} {healthLabel}
+                          </span>
+                        </div>
+                        <div className="flex gap-4">
+                          <div className="text-right">
+                            <span className="text-[9px] font-black text-gray-400 uppercase block tracking-tighter">Completed</span>
+                            <span className="text-sm font-black text-[#1a1a1a]">{c.completed_projects || 0}</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[9px] font-black text-gray-400 uppercase block tracking-tighter">Dispute Rate</span>
+                            <span className="text-sm font-black text-[#1a1a1a]">{disputeRate.toFixed(1)}%</span>
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Autonomous Release Trigger</label>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Payment Release Trigger</label>
               <div className="group relative">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-amber-600 transition-colors">
                   <ShieldCheck className="w-4 h-4" />
@@ -241,8 +288,8 @@ const CreateAgreementModal = ({ onClose, refresh, profile, isC2CView }) => {
                   value={formData.trigger_type}
                   onChange={(e) => setFormData({ ...formData, trigger_type: e.target.value })}
                 >
-                  <option value="manual_review" className="bg-white">Manual verification</option>
-                  <option value="github_pr" className="bg-white">GitHub Pull Request (AI-Verified)</option>
+                  <option value="manual_review" className="bg-white">Client Approval</option>
+                  <option value="github_pr" className="bg-white">GitHub PR (AI-Verified)</option>
                 </select>
               </div>
             </div>
@@ -250,7 +297,7 @@ const CreateAgreementModal = ({ onClose, refresh, profile, isC2CView }) => {
 
           <div className="space-y-8">
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Protocol Objectives</label>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Agreement Description</label>
               <textarea
                 required
                 className="w-full min-h-[100px] px-4 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:border-[#867361]/50 focus:bg-white transition-all outline-none text-[#1a1a1a] text-sm leading-relaxed"
@@ -275,13 +322,13 @@ const CreateAgreementModal = ({ onClose, refresh, profile, isC2CView }) => {
             <div className="p-6 rounded-[32px] bg-[#867361]/5 border border-[#867361]/10 overflow-hidden relative group">
               <div className="absolute top-0 right-0 w-32 h-32 bg-[#867361]/5 blur-3xl rounded-full" />
               <h3 className="text-[10px] font-black text-[#867361] uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                <Globe className="w-3.5 h-3.5" /> Immutable Fee Ledger
+                <Globe className="w-3.5 h-3.5" /> Financial Breakdown
               </h3>
 
               {ledger ? (
                 <div className="space-y-4 relative z-10">
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-500 text-xs font-medium">Total Capital Deposit</span>
+                    <span className="text-gray-500 text-xs font-medium">Agreement Amount</span>
                     <span className="text-[#1a1a1a] font-mono text-xs">${parseFloat(formData.amount).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between items-center">
@@ -296,7 +343,7 @@ const CreateAgreementModal = ({ onClose, refresh, profile, isC2CView }) => {
                     <span className="text-rose-600 font-mono text-xs">-${ledger.tax}</span>
                   </div>
                   <div className="pt-4 mt-2 border-t border-gray-200 flex justify-between items-end">
-                    <span className="text-sm font-bold text-emerald-600">Net Protocol Payout</span>
+                    <span className="text-sm font-bold text-emerald-600">Net Contractor Payout</span>
                     <div className="text-right">
                       <span className="text-2xl font-black text-emerald-600 font-mono leading-none">${ledger.contractor}</span>
                     </div>
@@ -306,7 +353,7 @@ const CreateAgreementModal = ({ onClose, refresh, profile, isC2CView }) => {
                 <div className="flex flex-col items-center justify-center py-6 text-center opacity-40">
                   <AlertCircle className="w-8 h-8 text-gray-400 mb-3" />
                   <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-relaxed">
-                    Enter protocol parameters to <br /> view automated breakdown
+                    Enter terms to <br /> view payment breakdown
                   </p>
                 </div>
               )}
@@ -318,7 +365,7 @@ const CreateAgreementModal = ({ onClose, refresh, profile, isC2CView }) => {
               className="w-full group btn-primary py-5 text-sm shadow-[#867361]/20 relative overflow-hidden"
             >
               <span className="relative z-10 flex items-center justify-center gap-3">
-                {loading ? 'Finalizing Protocol...' : 'Initialize & Deploy Protocol'}
+                {loading ? 'Creating...' : 'Create Smart Agreement'}
                 {!loading && <Zap className="w-4 h-4 fill-current group-hover:scale-125 transition-transform" />}
               </span>
             </button>

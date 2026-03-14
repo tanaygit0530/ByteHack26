@@ -17,16 +17,16 @@ const ClientToClient = ({ profile, refreshProfile }) => {
 
         <div className="relative z-10 max-w-3xl">
           <div className="flex items-center gap-3 text-[#867361] font-extrabold uppercase tracking-[0.3em] text-[10px] mb-6 bg-[#867361]/10 w-fit px-4 py-2 rounded-full border border-[#867361]/20">
-            <Zap className="w-3.5 h-3.5 fill-current" /> Peer-to-Peer Protocol
+            <Zap className="w-3.5 h-3.5 fill-current" /> C2C Direct Deals
           </div>
           <h1 className="text-5xl font-extrabold text-[#1a1a1a] mb-6 tracking-tight leading-tight">
             Client ↔ Client <span className="gradient-text italic">Sovereignty.</span>
           </h1>
           <p className="text-gray-500 text-xl font-medium leading-relaxed mb-8">
-            Eliminate intermediary friction. Any protocol participant can now initialize
-            secure agreements as either the Initiator or Counterparty with
-            <span className="text-[#867361] font-bold"> automated AI verification </span> and
-            <span className="text-[#867361] font-bold"> instant cryptographic settlement.</span>
+            Skip the middleman. Any user can now start
+            secure deals as either the Client or Contractor with
+            <span className="text-[#867361] font-bold"> automated AI-checks </span> and
+            <span className="text-[#867361] font-bold"> instant secure payments.</span>
           </p>
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">

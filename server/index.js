@@ -32,31 +32,62 @@ const supabase = (supabaseUrl && supabaseUrl.startsWith('http'))
 
 import { extractGithubDetails, fetchGithubData, analyzeRepositoryAI } from './services/verificationService.js';
 
-// Phase 1 Step 3: Immutable Fee Ledger Logic
-const calculateImmutableLedger = (amount, payerCountry, receiverCountry) => {
-  const totalAmount = parseFloat(amount);
-  const platformFeeRate = 0.01;
-  let taxReserveRate = 0.00;
+// Phase 4: Bilateral Negotiation (Update Agreement)
+app.put('/api/agreements/:id', async (req, res) => {
+  const { id } = req.params;
+  const { title, description, deliverables, amount, deadline } = req.body;
 
-  // Jurisdiction-based tax logic
-  const highTaxPayers = ['USA', 'UK', 'Germany', 'France', 'Japan', 'Canada'];
-  const devReceivers = ['India', 'Brazil', 'Vietnam'];
+  try {
+    const { data: agreement, error: fetchError } = await supabase
+      .from('agreements')
+      .select('status')
+      .eq('id', id)
+      .single();
 
-  if (highTaxPayers.includes(payerCountry) && devReceivers.includes(receiverCountry)) {
-    taxReserveRate = 0.10;
-  } else if (payerCountry === receiverCountry) {
-    taxReserveRate = 0.05;
-  } else {
-    taxReserveRate = 0.02;
+    if (fetchError || !agreement) return res.status(404).json({ error: "Agreement not found" });
+    if (agreement.status !== 'AGREEMENT_CREATED') {
+      return res.status(400).json({ error: "Cannot modify agreement once it has been accepted or funded." });
+    }
+
+    const { data, error } = await supabase
+      .from('agreements')
+      .update({
+        title,
+        description,
+        deliverables,
+        amount,
+        deadline,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select();
+
+    if (error) throw error;
+
+    // Log the negotiation change
+    await supabase.from('audit_logs').insert([{
+      agreement_id: id,
+      decision: 'negotiation_update',
+      reason: 'Bilateral terms adjusted during draft phase.'
+    }]);
+
+    res.json({ message: "Agreement updated successfully", data: data[0] });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
+});
 
-  const platform_fee = totalAmount * platformFeeRate;
-  const tax_reserve = totalAmount * taxReserveRate;
-  const receiver_amount = totalAmount - platform_fee - tax_reserve;
+// Phase 1 Step 3: Immutable Fee Ledger Logic (Phase 4 Version)
+const calculateImmutableLedger = (amount) => {
+  const totalAmount = parseFloat(amount);
+
+  const platform_fee = totalAmount * 0.01; // Phase 4 Requirement: 1%
+  const estimated_tax = totalAmount * 0.10; // Phase 4 Requirement: 10% (Recorded only)
+  const receiver_amount = totalAmount - platform_fee;
 
   return {
     platform_fee,
-    tax_reserve,
+    estimated_tax,
     receiver_amount
   };
 };
@@ -170,18 +201,32 @@ const executeSettlement = async (agreementId, outcome, arbiterId = null, splitDa
     agreement.payer = client;
     agreement.receiver = contractor;
 
+    const ledger = calculateImmutableLedger(amount);
+
     if (outcome === 'CONTRACTOR_WINS') {
-      receiverPayout = parseFloat(agreement.receiver_amount);
-      status = 'SETTLED';
+      receiverPayout = ledger.receiver_amount;
+      status = 'PAID';
     } else if (outcome === 'CLIENT_WINS') {
       payerRefund = parseFloat(amount); // Refund total deposit
       status = 'REFUNDED';
     } else if (outcome === 'PARTIAL_SETTLEMENT') {
-      const receiverCut = parseFloat(splitData.contractor_percent) || parseFloat(splitData.receiver_percent) / 100;
-      receiverPayout = parseFloat(amount) * (receiverCut / 100);
-      payerRefund = parseFloat(amount) - receiverPayout;
+      const receiverCut = parseFloat(splitData.contractor_percent) || 50;
+      receiverPayout = (ledger.receiver_amount * receiverCut) / 100;
+      payerRefund = parseFloat(amount) - receiverPayout - ledger.platform_fee - ledger.gst_amount - ledger.digital_service_tax;
       status = 'PARTIAL_SETTLED';
     }
+
+    // 4. Compliance Engine: Record Tax Liability
+    await supabase.from('tax_records').insert([{
+      agreement_id: agreementId,
+      total_amount: amount,
+      platform_fee: ledger.platform_fee,
+      jurisdiction_client: agreement.payer?.country || 'USA',
+      jurisdiction_contractor: agreement.receiver?.country || 'India',
+      estimated_tax: ledger.estimated_tax,
+      net_payout: receiverPayout,
+      status: 'liability_recorded'
+    }]);
 
     // Process Receiver Payout
     if (receiverPayout > 0) {
@@ -242,7 +287,8 @@ const executeSettlement = async (agreementId, outcome, arbiterId = null, splitDa
       financials: {
         gross: amount,
         platform_fee: agreement.platform_fee,
-        tax_reserve_metadata: agreement.tax_reserve,
+        gst_amount: agreement.gst_amount,
+        digital_service_tax: agreement.digital_service_tax,
         receiver_received: receiverPayout,
         payer_refunded: payerRefund
       },
@@ -257,9 +303,28 @@ const executeSettlement = async (agreementId, outcome, arbiterId = null, splitDa
       }
     };
 
+    // 7. Immutable Settlement Certificate: Persist to dedicated table
+    await supabase.from('settlement_certificates').insert([{
+      agreement_id: agreementId,
+      tx_hash: complianceReport.tx_hash,
+      certificate_data: complianceReport
+    }]);
+
+    // Update Contractor Health Metrics
+    if (outcome === 'CONTRACTOR_WINS' || outcome === 'PARTIAL_SETTLEMENT') {
+      const { data: prof } = await supabase.from('profiles').select('completed_projects, resolved_disputes').eq('id', receiver_id).single();
+      const updates = { completed_projects: (prof?.completed_projects || 0) + 1 };
+      if (agreement.status === 'DISPUTED') {
+        updates.resolved_disputes = (prof?.resolved_disputes || 0) + 1;
+      }
+      await supabase.from('profiles').update(updates).eq('id', receiver_id);
+    }
+
     await supabase.from('agreements')
       .update({
         status,
+        platform_fee: ledger.platform_fee,
+        estimated_tax: ledger.estimated_tax,
         updated_at: new Date().toISOString(),
         compliance_report: complianceReport
       })
@@ -306,18 +371,23 @@ app.post('/api/agreements', async (req, res) => {
     const contractor = profiles?.find(p => p.id === receiver_id);
 
     // Calculate Immutable Ledger
-    const ledger = calculateImmutableLedger(amount, client?.country, contractor?.country);
+    const ledger = calculateImmutableLedger(amount);
 
     const { data, error } = await supabase
       .from('agreements')
       .insert([{
         title, description, deliverables, amount, deadline, payer_id, receiver_id,
-        trigger_type: trigger_type || 'manual_review', status: 'DRAFT',
+        trigger_type: trigger_type || 'manual_review', status: 'AGREEMENT_CREATED',
         agreement_type: agreement_type || 'ESCROW', ...ledger
       }])
       .select().single();
 
     if (error) throw error;
+
+    // Increment Total Projects for Contractor
+    const { data: contractorProfile } = await supabase.from('profiles').select('total_projects').eq('id', receiver_id).single();
+    await supabase.from('profiles').update({ total_projects: (contractorProfile?.total_projects || 0) + 1 }).eq('id', receiver_id);
+
     res.json(data);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -335,7 +405,9 @@ app.post('/api/agreements/:id/fund', async (req, res) => {
       .single();
 
     if (fetchError || !agreement) throw new Error("Agreement not found: " + (fetchError?.message || "No data"));
-    if (agreement.status !== 'ACCEPTED') throw new Error("Agreement must be accepted by contractor before funding");
+    if (agreement.status !== 'ACCEPTED' && agreement.status !== 'AGREEMENT_CREATED') {
+      throw new Error("Agreement must be in CREATED or ACCEPTED status before funding");
+    }
 
     const amountToDeduct = parseFloat(agreement.amount);
 
@@ -368,12 +440,29 @@ app.post('/api/agreements/:id/fund', async (req, res) => {
 
     const { data, error } = await supabase
       .from('agreements')
-      .update({ status: 'FUNDED_AND_LOCKED', updated_at: new Date().toISOString() })
+      .update({ status: 'ESCROW_FUNDED', updated_at: new Date().toISOString() })
       .eq('id', id)
       .select().single();
 
     if (error) throw error;
     res.json({ message: 'Capital secured and locked in vault.', data });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin: Lock Escrow
+app.post('/api/agreements/:id/lock', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { data, error } = await supabase
+      .from('agreements')
+      .update({ status: 'ESCROW_LOCKED', updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select().single();
+
+    if (error) throw error;
+    res.json({ message: 'Escrow vault locked and secured.', data });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -465,7 +554,7 @@ app.post('/api/agreements/:id/submit', async (req, res) => {
         ai_score: aiData.confidence_score,
         ai_summary: aiData.summary,
         domain_match: aiData.domain_match,
-        status: 'AI_VERIFIED',
+        status: 'WORK_SUBMITTED',
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
@@ -491,16 +580,18 @@ app.post('/api/agreements/:id/reviews', async (req, res) => {
   const { decision, reason } = req.body; // 'approve' or 'reject'
 
   try {
-    const status = decision === 'approve' ? 'APPROVED' : 'DISPUTED';
-
-    // 1. Update Agreement Status
-    const { data: agreement, error: updateError } = await supabase
-      .from('agreements')
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq('id', id)
-      .select().single();
-
-    if (updateError) throw updateError;
+    let result;
+    if (decision === 'approve') {
+      result = await executeSettlement(id, 'CONTRACTOR_WINS');
+    } else {
+      const { data: agreement, error: updateError } = await supabase
+        .from('agreements')
+        .update({ status: 'DISPUTED', updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select().single();
+      if (updateError) throw updateError;
+      result = { status: 'DISPUTED', ...agreement };
+    }
 
     // Fetch latest AI review for audit logging
     const { data: aiReview } = await supabase.from('ai_reviews').select('ai_score').eq('agreement_id', id).order('created_at', { ascending: false }).limit(1).single();
@@ -508,22 +599,15 @@ app.post('/api/agreements/:id/reviews', async (req, res) => {
     // 2. Step 6: Create Audit Log entry
     await supabase.from('audit_logs').insert([{
       agreement_id: id,
-      reviewer: agreement.payer_id,
+      reviewer: result.payer_id,
       ai_score: aiReview?.ai_score || 0,
       decision,
       reason: reason || 'Human verified decision'
     }]);
 
-    // 3. If approved, trigger settlement immediately
-    let settlementResult = null;
-    if (decision === 'approve') {
-      settlementResult = await executeSettlement(id, 'CONTRACTOR_WINS');
-    }
-
     res.json({
-      message: `Agreement ${status.toLowerCase()} successfully.`,
-      data: agreement,
-      settlement: settlementResult
+      message: `Agreement ${result.status.toLowerCase()} successfully.`,
+      data: result
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -574,13 +658,17 @@ app.post('/api/agreements/:id/dispute', async (req, res) => {
   const { id } = req.params;
   const { reason } = req.body;
   try {
-    const { data: agreement, error } = await supabase
+    const { data: agreement, error: fetchError } = await supabase
       .from('agreements')
       .update({ status: 'DISPUTED', updated_at: new Date().toISOString() })
       .eq('id', id)
       .select().single();
 
-    if (error) throw error;
+    if (fetchError) throw fetchError;
+
+    // Increment Total Disputes for Contractor
+    const { data: cond } = await supabase.from('profiles').select('total_disputes').eq('id', agreement.receiver_id).single();
+    await supabase.from('profiles').update({ total_disputes: (cond?.total_disputes || 0) + 1 }).eq('id', agreement.receiver_id);
 
     await supabase.from('audit_logs').insert([{
       agreement_id: id,
@@ -624,10 +712,50 @@ app.post('/api/agreements/:id/settle', async (req, res) => {
   const { id } = req.params;
   try {
     const result = await executeSettlement(id, 'CONTRACTOR_WINS');
-    res.json({ message: 'Settlement executed.', ...result });
+    res.json({ message: 'Settlement executed via manual approval.', ...result });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+});
+
+// Phase 4: Oracle Settlement Trigger (Post-Verification/Webhook/n8n)
+app.post('/api/settlement-trigger', async (req, res) => {
+  const { project_id, oracle_status } = req.body;
+  if (oracle_status !== 'approved' && oracle_status !== 'conditions_met') {
+    return res.status(400).json({ error: "Oracle condition not met." });
+  }
+
+  try {
+    const result = await executeSettlement(project_id, 'CONTRACTOR_WINS');
+    res.json({ message: 'Oracle trigger accepted. Settlement processed.', ...result });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Phase 4: GitHub PR/Merge Webhook Handler
+app.post('/api/webhooks/github', async (req, res) => {
+  const { action, pull_request, repository } = req.body;
+
+  // Only trigger if a PR is merged
+  if (action === 'closed' && pull_request?.merged) {
+    const repoUrl = repository.html_url;
+
+    // Find the agreement associated with this repo
+    const { data: agreement } = await supabase
+      .from('deliverables')
+      .select('agreement_id')
+      .eq('submission_url', repoUrl)
+      .single();
+
+    if (agreement) {
+      console.log(`🚀 GitHub Oracle: Merge detected for ${repoUrl}. Triggering settlement...`);
+      await executeSettlement(agreement.agreement_id, 'CONTRACTOR_WINS');
+      return res.json({ message: "GitHub Oracle Triggered Settlement." });
+    }
+  }
+
+  res.json({ message: "Webhook received but no trigger action taken." });
 });
 
 // Keep the old simulate-payment for backward compatibility but update its logic
@@ -678,6 +806,34 @@ app.post('/api/profiles/:id/add-funds', async (req, res) => {
 
     if (error) throw error;
     res.json({ message: 'Funds added successfully', wallet_balance: data.balance });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Phase 4: Reject/Cancel Agreement
+app.delete('/api/agreements/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { data: agreement, error: fetchError } = await supabase
+      .from('agreements')
+      .select('status')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !agreement) return res.status(404).json({ error: "Agreement not found" });
+    if (agreement.status !== 'AGREEMENT_CREATED' && agreement.status !== 'ACCEPTED') {
+      return res.status(400).json({ error: "Cannot reject an agreement that is already funded or in progress." });
+    }
+
+    const { error } = await supabase
+      .from('agreements')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    res.json({ message: "Agreement cancelled and removed." });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
