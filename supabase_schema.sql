@@ -168,6 +168,10 @@ CREATE POLICY "Public update profiles"
 ON public.profiles FOR UPDATE
 USING (true);
 
+CREATE POLICY "Public wallets access"
+ON public.wallets FOR ALL
+USING (true);
+
 CREATE POLICY "Public agreements access"
 ON public.agreements FOR ALL
 USING (true);

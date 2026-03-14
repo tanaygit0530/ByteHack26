@@ -1,11 +1,52 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ShieldCheck, FileText, Globe, DollarSign, Clock, CheckCircle2, ChevronRight, Hash } from 'lucide-react';
+import { X, ShieldCheck, FileText, Globe, DollarSign, Clock, CheckCircle2, ChevronRight, Hash, ExternalLink, Download, Loader2 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import { toPng } from 'html-to-image';
 
 const ComplianceCertificateModal = ({ isOpen, onClose, agreement }) => {
+  const printRef = useRef(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
   if (!agreement?.compliance_report || !isOpen) return null;
 
   const report = agreement.compliance_report;
+
+  const handleDownloadPDF = async (e) => {
+    e.stopPropagation();
+    if (!printRef.current || isGenerating) return;
+
+    try {
+      setIsGenerating(true);
+
+      // Add a small delay so UI can update to 'isGenerating' state
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      const element = printRef.current;
+
+      const dataUrl = await toPng(element, {
+        quality: 1.0,
+        pixelRatio: 2, // High resolution
+        backgroundColor: "#0B0F19",
+      });
+
+      // Create PDF
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = (element.offsetHeight * pageWidth) / element.offsetWidth;
+
+      pdf.addImage(dataUrl, "PNG", 0, 0, pageWidth, pageHeight, undefined, 'FAST');
+
+      const safeId = (agreement?.id || "nexus").slice(0, 8);
+      pdf.save(`Settlement_Certificate_${safeId}.pdf`);
+
+    } catch (err) {
+      console.error("CRITICAL ERROR DURING PDF GENERATION:", err);
+      alert("Error generating compliant PDF. Check browser support and console.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -22,27 +63,37 @@ const ComplianceCertificateModal = ({ isOpen, onClose, agreement }) => {
           initial={{ opacity: 0, scale: 0.9, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: 20 }}
-          className="relative w-full max-w-2xl bg-[#0B0F19] border border-[#2A344A] rounded-3xl overflow-hidden shadow-2xl"
+          className="relative w-full max-w-2xl bg-[#0B0F19] border border-[#2A344A] rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
         >
           {/* Header */}
-          <div className="relative p-6 bg-gradient-to-br from-indigo-500/10 via-transparent to-transparent border-b border-[#2A344A]">
+          <div className="relative p-6 bg-gradient-to-br from-indigo-500/10 via-transparent to-transparent border-b border-[#2A344A] sticky top-0 z-10">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/20">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/20 shadow-inner">
                   <ShieldCheck className="w-6 h-6" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-black text-white uppercase tracking-tighter">Settlement Certificate</h2>
-                  <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Nexus Immutable Compliance Ledger v1.0</p>
+                  <h2 className="text-xl font-black text-white uppercase tracking-tighter leading-none">Settlement Certificate</h2>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mt-1">Nexus Immutable Compliance Ledger v1.0</p>
                 </div>
               </div>
-              <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full text-gray-400 transition-colors">
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleDownloadPDF}
+                  disabled={isGenerating}
+                  className="group relative flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black rounded-xl transition-all shadow-xl shadow-indigo-600/20 disabled:opacity-50 active:scale-95"
+                >
+                  {isGenerating ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : <Download className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform" />}
+                  {isGenerating ? "MINTING COMPLIANCE..." : "DOWNLOAD PDF"}
+                </button>
+                <button onClick={onClose} className="p-2.5 hover:bg-white/5 rounded-full text-gray-400 transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
           </div>
 
-          <div className="p-8 max-h-[80vh] overflow-y-auto custom-scrollbar space-y-8">
+          <div ref={printRef} className="p-8 overflow-y-auto custom-scrollbar space-y-8 bg-[#0B0F19]">
             {/* Proof Section */}
             <div className="space-y-4">
                 <div className="flex items-center gap-2 text-[10px] font-black text-indigo-400 uppercase tracking-widest">
@@ -99,28 +150,28 @@ const ComplianceCertificateModal = ({ isOpen, onClose, agreement }) => {
                 <div className="space-y-4">
                     <div className="flex justify-between items-center text-sm">
                         <span className="text-gray-500">Gross Contract Value</span>
-                        <span className="text-white font-mono font-bold">${report.financials.gross.toLocaleString()}</span>
+                        <span className="text-white font-mono font-bold">${Number(report.financials.gross).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between items-center text-xs">
                         <span className="text-gray-500">Platform Fee (De-Escrow)</span>
-                        <span className="text-rose-400 font-mono">-${report.financials.platform_fee}</span>
+                        <span className="text-rose-400 font-mono">-${Number(report.financials.platform_fee).toLocaleString()}</span>
                     </div>
                     <div className="pt-4 border-t border-[#2A344A] flex justify-between items-center">
                         <span className="text-[10px] font-black text-indigo-400 uppercase">Net Disbursed</span>
-                        <span className="text-xl text-emerald-400 font-black font-mono tracking-tighter">${report.financials.contractor_received.toLocaleString()}</span>
+                        <span className="text-xl text-emerald-400 font-black font-mono tracking-tighter">${Number(report.financials.contractor_received).toLocaleString()}</span>
                     </div>
                 </div>
             </div>
 
             {/* Compliance & Tax Liability */}
-            <div className="p-6 rounded-2xl bg-amber-500/5 border border-amber-500/10 border-l-4 border-l-amber-500">
+            <div className="p-6 rounded-2xl bg-amber-500/5 border border-amber-500/10 border-l-4 border-l-amber-500" style={{ backgroundColor: 'rgba(245, 158, 11, 0.05)', borderColor: 'rgba(245, 158, 11, 0.1)' }}>
                 <h3 className="text-xs font-black text-amber-500 uppercase tracking-widest mb-3 flex items-center gap-2">
                     Regulatory Tax Liability Statement
                 </h3>
-                <p className="text-[11px] text-amber-200/70 leading-relaxed mb-4 italic">
+                <p className="text-[11px] text-amber-200/70 leading-relaxed mb-4 italic" style={{ color: 'rgba(253, 230, 138, 0.7)' }}>
                     Based on the {report.jurisdiction.client}/{report.jurisdiction.contractor} cross-border framework, an estimated liability of <span className="text-amber-400 font-bold">{report.tax_liability_estimate.rate}</span> applies. Funds were not withheld; payment routing was executed in full to the service provider.
                 </p>
-                <div className="flex items-center justify-between p-3 rounded-lg bg-black/40">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-black/40" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>
                     <span className="text-[10px] font-bold text-gray-500 uppercase">Estimated Obligation</span>
                     <span className="text-xs text-white font-mono font-bold font-black">${report.tax_liability_estimate.obligation_usd} USD</span>
                 </div>
@@ -140,7 +191,7 @@ const ComplianceCertificateModal = ({ isOpen, onClose, agreement }) => {
                         </a>
                     </div>
                 </div>
-                <div className="px-4 py-2 rounded-lg bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase tracking-tighter flex items-center gap-2 border border-emerald-500/20">
+                <div className="px-4 py-2 rounded-lg bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase tracking-tighter flex items-center gap-2 border border-emerald-500/20" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', borderColor: 'rgba(16, 185, 129, 0.2)' }}>
                     <CheckCircle2 className="w-3 h-3" /> Ledger Verified
                 </div>
             </div>

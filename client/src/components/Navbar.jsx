@@ -17,7 +17,13 @@ const Navbar = ({ profile, onLogout }) => {
           setWallet(payload.new);
         })
         .subscribe();
-      return () => supabase.removeChannel(sub);
+      
+      const syncInterval = setInterval(fetchWallet, 3000);
+
+      return () => {
+        supabase.removeChannel(sub);
+        clearInterval(syncInterval);
+      };
     }
   }, [profile]);
 
@@ -39,6 +45,7 @@ const Navbar = ({ profile, onLogout }) => {
       await axios.post(`${API_BASE_URL}/profiles/${profile.id}/add-funds`, {
         amount: parseFloat(amount)
       });
+      await fetchWallet();
     } catch (error) {
       alert("Failed to add funds: " + (error.response?.data?.error || error.message));
     } finally {

@@ -153,16 +153,22 @@ const executeSettlement = async (agreementId, outcome, arbiterId = null, splitDa
   try {
     const { data: agreement, error: fetchError } = await supabase
       .from('agreements')
-      .select('*, client:client_id(*), contractor:contractor_id(*)')
+      .select('*')
       .eq('id', agreementId)
       .single();
 
-    if (fetchError || !agreement) throw new Error("Agreement not found");
+    if (fetchError || !agreement) throw new Error("Agreement not found: " + (fetchError?.message || "No data"));
 
     const { amount, contractor_id, client_id } = agreement;
     let contractorPayout = 0;
     let clientRefund = 0;
     let status = 'SETTLED';
+
+    const { data: client } = await supabase.from('profiles').select('*').eq('id', client_id).single();
+    const { data: contractor } = await supabase.from('profiles').select('*').eq('id', contractor_id).single();
+
+    agreement.client = client;
+    agreement.contractor = contractor;
 
     if (outcome === 'CONTRACTOR_WINS') {
         contractorPayout = parseFloat(agreement.contractor_amount);
@@ -326,7 +332,7 @@ app.post('/api/agreements/:id/fund', async (req, res) => {
       .eq('id', id)
       .single();
 
-    if (fetchError || !agreement) throw new Error("Agreement not found");
+    if (fetchError || !agreement) throw new Error("Agreement not found: " + (fetchError?.message || "No data"));
     if (agreement.status !== 'ACCEPTED') throw new Error("Agreement must be accepted by contractor before funding");
 
     const amountToDeduct = parseFloat(agreement.amount);
@@ -429,7 +435,7 @@ app.post('/api/agreements/:id/submit', async (req, res) => {
       .eq('id', id)
       .single();
 
-    if (fetchError || !agreement) throw new Error("Agreement not found");
+    if (fetchError || !agreement) throw new Error("Agreement not found: " + (fetchError?.message || "No data"));
 
     // Insert into Deliverables
     await supabase.from('deliverables').insert([{
@@ -637,13 +643,16 @@ app.post('/api/profiles/:id/add-funds', async (req, res) => {
   const { amount } = req.body;
 
   try {
-    const { data: wallet, error: fetchError } = await supabase
+    let { data: wallet, error: fetchError } = await supabase
       .from('wallets')
       .select('id, balance')
       .eq('owner_id', id)
       .single();
 
-    if (fetchError || !wallet) throw new Error("Wallet not found");
+    if (fetchError || !wallet) {
+       const { data: newWallet } = await supabase.from('wallets').insert([{ owner_id: id, balance: 0 }]).select().single();
+       wallet = newWallet;
+    }
 
     const newBalance = parseFloat(wallet.balance || 0) + parseFloat(amount);
 
