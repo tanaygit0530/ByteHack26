@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Clock, CheckCircle2, AlertCircle, ExternalLink, ArrowRight, ShieldCheck, DollarSign, FileText } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -8,9 +8,44 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
   const [loading, setLoading] = useState(false);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [aiReview, setAiReview] = useState(null);
+  const [deliverable, setDeliverable] = useState(null);
+
+  useEffect(() => {
+    fetchRelatedData();
+    fetchAuditLogs();
+    
+    // Subscribe to AI reviews and deliverables
+    const sub = supabase.channel(`agreement_${agreement.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ai_reviews', filter: `agreement_id=eq.${agreement.id}` }, () => fetchRelatedData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'deliverables', filter: `agreement_id=eq.${agreement.id}` }, () => fetchRelatedData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'audit_logs', filter: `agreement_id=eq.${agreement.id}` }, () => fetchAuditLogs())
+      .subscribe();
+
+    return () => supabase.removeChannel(sub);
+  }, [agreement.id]);
+
+  const fetchRelatedData = async () => {
+    const { data: reviews } = await supabase.from('ai_reviews').select('*').eq('agreement_id', agreement.id).order('created_at', { ascending: false }).limit(1);
+    const { data: subs } = await supabase.from('deliverables').select('*').eq('agreement_id', agreement.id).order('submitted_at', { ascending: false }).limit(1);
+    
+    if (reviews?.[0]) setAiReview(reviews[0]);
+    if (subs?.[0]) setDeliverable(subs[0]);
+  };
+
+  const fetchAuditLogs = async () => {
+    const { data } = await supabase
+      .from('audit_logs')
+      .select('*')
+      .eq('agreement_id', agreement.id)
+      .order('timestamp', { ascending: false });
+    if (data) setAuditLogs(data);
+  };
 
   const statuses = [
     { id: 'DRAFT', label: 'Draft', color: 'bg-gray-400' },
+    { id: 'ACCEPTED', label: 'Accepted', color: 'bg-blue-400' },
     { id: 'FUNDED_AND_LOCKED', label: 'Funded', color: 'bg-amber-500' },
     { id: 'IN_REVIEW', label: 'AI Reviewing', color: 'bg-blue-500' },
     { id: 'APPROVED', label: 'Approved', color: 'bg-emerald-500' },
@@ -26,6 +61,8 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
     try {
       if (action === 'fund') {
         await axios.post(`${API_BASE_URL}/agreements/${agreement.id}/fund`);
+      } else if (action === 'accept-contractor') {
+        await axios.post(`${API_BASE_URL}/agreements/${agreement.id}/accept-contractor`);
       } else if (action === 'reject-phase1') {
         const reason = prompt("Reason for rejection (e.g., Budget too high, Unrealistic deadline):");
         if (!reason) return;
@@ -36,8 +73,14 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
         const url = prompt("Submit Deliverable URL (e.g. GitHub Repo):");
         if (!url) return;
         await axios.post(`${API_BASE_URL}/agreements/${agreement.id}/submit`, { deliverable_url: url });
+      } else if (action === 'request-changes') {
+        const reason = prompt("Describe requested changes:");
+        if (!reason) return;
+        await axios.post(`${API_BASE_URL}/agreements/${agreement.id}/request-changes`, { reason });
       } else if (action === 'approve' || action === 'reject') {
-        await axios.post(`${API_BASE_URL}/agreements/${agreement.id}/reviews`, { decision: action });
+        const reason = action === 'reject' ? prompt("Enter dispute reason:") : 'Human verified approval';
+        if (action === 'reject' && !reason) return;
+        await axios.post(`${API_BASE_URL}/agreements/${agreement.id}/reviews`, { decision: action, reason });
       }
     } catch (error) {
       alert("Action failed: " + (error.response?.data?.error || error.message));
@@ -148,26 +191,38 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
              </div>
           </div>
         </div>
-
-        {/* AI Analysis Report Display */}
-        {agreement.ai_score && (
-            <div className="p-4 rounded-lg bg-blue-500/5 border border-blue-500/20 space-y-2">
-                <div className="flex justify-between items-center">
-                    <h4 className="text-xs font-bold text-blue-400 uppercase tracking-widest">AI Verification Report</h4>
-                    <span className="px-2 py-0.5 rounded bg-blue-500 text-white text-[10px] font-bold">
-                        {agreement.ai_score}% CONFIDENCE
-                    </span>
-                </div>
-                <p className="text-xs text-blue-100/70 italic leading-relaxed">
-                    "{agreement.ai_summary}"
-                </p>
-            </div>
-        )}
       </div>
 
       {/* Action Buttons */}
       <div className="p-6 bg-[#111827] border-t border-[#2A344A]">
         {agreement.status === 'DRAFT' && role === 'client' && (
+           <div className="w-full py-4 rounded-xl bg-blue-500/5 border border-blue-500/10 text-gray-400 font-medium flex items-center justify-center gap-2 italic text-sm">
+              <Clock className="w-4 h-4" />
+              Awaiting service provider acceptance...
+           </div>
+        )}
+
+        {agreement.status === 'DRAFT' && role === 'contractor' && (
+           <div className="flex gap-3">
+              <button
+                onClick={() => handleAction('accept-contractor')}
+                disabled={loading}
+                className="flex-[2] py-3 rounded-lg bg-blue-600 text-white font-medium flex items-center justify-center gap-2 hover:bg-blue-700 active:scale-95 transition-all shadow-md"
+              >
+                <CheckCircle2 className="w-5 h-5" />
+                {loading ? 'Processing...' : 'Accept Agreement Terms'}
+              </button>
+              <button
+                onClick={() => handleAction('reject-phase1')}
+                disabled={loading}
+                className="flex-1 py-3 rounded-lg bg-rose-600/10 border border-rose-600/20 text-rose-500 font-medium hover:bg-rose-600/20 transition-all"
+              >
+                Reject
+              </button>
+          </div>
+        )}
+
+        {agreement.status === 'ACCEPTED' && role === 'client' && (
           <div className="flex gap-3">
               <button
                 onClick={() => handleAction('fund')}
@@ -182,9 +237,16 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
                 disabled={loading}
                 className="flex-1 py-3 rounded-lg bg-rose-600/10 border border-rose-600/20 text-rose-500 font-medium hover:bg-rose-600/20 transition-all"
               >
-                Reject
+                Cancel
               </button>
           </div>
+        )}
+
+        {agreement.status === 'ACCEPTED' && role === 'contractor' && (
+            <div className="w-full py-4 rounded-xl bg-amber-500/5 border border-amber-500/10 text-amber-500/70 font-medium flex items-center justify-center gap-2 italic text-sm">
+                <Clock className="w-4 h-4" />
+                Awaiting client deposit...
+            </div>
         )}
 
         {agreement.status === 'REJECTED' && (
@@ -209,23 +271,73 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
           </button>
         )}
 
+        {agreement.status === 'IN_REVIEW' && aiReview && (
+        <div className="p-6 bg-[#0B0F19] border-t border-[#2A344A]">
+           <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                 <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500 shadow-sm border border-blue-500/20">
+                    <ShieldCheck className="w-5 h-5" />
+                 </div>
+                 <div>
+                    <h3 className="text-white font-bold leading-none mb-1">AI Verification Report</h3>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-widest font-black">Autonomous Verification Agent v2.0</p>
+                 </div>
+              </div>
+              <div className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shadow-sm border ${
+                aiReview.ai_score >= 80 ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
+                aiReview.ai_score >= 50 ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 
+                'bg-rose-500/10 text-rose-500 border-rose-500/20'
+              }`}>
+                {aiReview.ai_score}% Confidence
+              </div>
+           </div>
+
+           <div className="p-4 rounded-xl bg-[#1A2235]/50 border border-white/5 mb-6">
+              <p className="text-sm text-gray-400 italic leading-relaxed">
+                "{aiReview.ai_summary}"
+              </p>
+           </div>
+
+           <div className="grid grid-cols-2 gap-4">
+              <div className="p-3 rounded-xl bg-[#111827] border border-[#2A344A]">
+                 <span className="text-[9px] text-gray-500 uppercase font-bold block mb-1">Analysis Type</span>
+                 <span className="text-xs text-white font-medium">{aiReview.ai_metadata?.analysis_type || 'General System'}</span>
+              </div>
+              <div className="p-3 rounded-xl bg-[#111827] border border-[#2A344A]">
+                 <span className="text-[9px] text-gray-500 uppercase font-bold block mb-1">Domain Match</span>
+                 <span className={`text-xs font-bold ${aiReview.domain_match ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {aiReview.domain_match ? 'VERIFIED' : 'MISMATCH'}
+                 </span>
+              </div>
+           </div>
+        </div>
+      )}
         {agreement.status === 'IN_REVIEW' && role === 'client' && (
-          <div className="flex gap-3">
-              <button
-                onClick={() => handleAction('approve')}
-                disabled={loading}
-                className="flex-1 py-3 rounded-lg bg-emerald-600 text-white font-medium flex items-center justify-center gap-2 hover:bg-emerald-700 active:scale-95 transition-all shadow-md"
-              >
-                <CheckCircle2 className="w-5 h-5" />
-                Approve
-              </button>
+          <div className="space-y-3">
+              <div className="flex gap-3">
+                  <button
+                    onClick={() => handleAction('approve')}
+                    disabled={loading}
+                    className="flex-1 py-3 rounded-lg bg-emerald-600 text-white font-medium flex items-center justify-center gap-2 hover:bg-emerald-700 active:scale-95 transition-all shadow-md"
+                  >
+                    <CheckCircle2 className="w-5 h-5" />
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => handleAction('request-changes')}
+                    disabled={loading}
+                    className="flex-1 py-3 rounded-lg bg-indigo-600 text-white font-medium flex items-center justify-center gap-2 hover:bg-indigo-700 active:scale-95 transition-all shadow-md"
+                  >
+                    <ArrowRight className="w-5 h-5 rotate-180" />
+                    Fixes
+                  </button>
+              </div>
               <button
                 onClick={() => handleAction('reject')}
                 disabled={loading}
-                className="flex-1 py-3 rounded-lg bg-red-600 text-white font-medium flex items-center justify-center gap-2 hover:bg-red-700 active:scale-95 transition-all shadow-md"
+                className="w-full py-2 rounded-lg bg-rose-600/10 border border-rose-600/20 text-rose-500 font-bold text-xs hover:bg-rose-600/20 transition-all uppercase tracking-widest"
               >
-                <AlertCircle className="w-5 h-5" />
-                Dispute
+                Open Dispute / Reject
               </button>
           </div>
         )}
@@ -247,9 +359,9 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
                 <CheckCircle2 className="w-5 h-5" />
                 Agreement Settled & Disbursed
               </div>
-              {agreement.receipt_url && (
+              {deliverable?.receipt_url && (
                   <a 
-                    href={agreement.receipt_url} 
+                    href={deliverable.receipt_url} 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="w-full py-2 flex items-center justify-center gap-2 text-indigo-400 text-xs font-bold hover:text-indigo-300 transition-colors"
@@ -282,6 +394,28 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
         {agreement.status === 'APPROVED' && role === 'contractor' && (
             <div className="w-full py-4 flex items-center justify-center text-gray-500 italic text-sm">
                 Awaiting final disbursement...
+            </div>
+        )}
+
+        {/* Phase 3 Step 6: Audit Trail Display */}
+        {auditLogs.length > 0 && (
+            <div className="mt-6 pt-6 border-t border-[#2A344A] space-y-3">
+                <div className="flex items-center gap-2 text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                    <FileText className="w-3 h-3" /> Agreement Audit Trail
+                </div>
+                <div className="space-y-2 max-h-[120px] overflow-y-auto pr-2 custom-scrollbar">
+                    {auditLogs.map((log) => (
+                        <div key={log.id} className="p-3 rounded-lg bg-[#111827] border border-[#2A344A] flex justify-between items-start gap-4">
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-bold text-gray-300 capitalize">{log.decision.replace('_', ' ')}</p>
+                                <p className="text-[9px] text-gray-500 italic">"{log.reason}"</p>
+                            </div>
+                            <span className="text-[8px] text-gray-600 whitespace-nowrap">
+                                {new Date(log.timestamp).toLocaleDateString()}
+                            </span>
+                        </div>
+                    ))}
+                </div>
             </div>
         )}
       </div>

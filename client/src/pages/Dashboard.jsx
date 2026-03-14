@@ -122,7 +122,7 @@ const Dashboard = ({ profile, refreshProfile }) => {
               <AgreementCard 
                 key={agreement.id} 
                 agreement={agreement} 
-                role={profile.role} 
+                role={profile?.role} 
                 index={i}
                 refreshProfile={refreshProfile}
               />

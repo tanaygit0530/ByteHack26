@@ -61,26 +61,78 @@ const calculateImmutableLedger = (amount, clientCountry, contractorCountry) => {
   };
 };
 
-// Phase 2 Step 6: AI Verification Service
+// Phase 2 Step 6: AI Verification Service with Confidence Scoring Model
 const performAIAnalysis = async (repoUrl) => {
   console.log(`🤖 Starting AI Analysis for: ${repoUrl}`);
   
-  // Simulated GitHub API checks
-  // 1. Detect repository type
-  const isReact = repoUrl.toLowerCase().includes('react') || true; 
+  // Simulated GitHub metadata collection
+  const repoName = repoUrl.split('/').pop();
   
-  // 2. Perform checks (Simulated)
-  const repoExists = true;
-  const commitCount = Math.floor(Math.random() * 20) + 5;
-  const hasFiles = true; // README, package.json
+  // 1. Detect Repository Type & Domain Match
+  // Logic: Only "Web Development" is valid for this escrow protocol
+  let repo_type = "Unknown Repository";
+  let domain_match = false;
   
-  const confidence_score = Math.floor(Math.random() * 20) + 80; // 80-100%
-  
-  const summary = `AI verification score: ${confidence_score}%. Repository detected as ${isReact ? 'React application' : 'Standard Web Project'}. ${commitCount} commits detected. Required deployment files (README.md, package.json) verified. Manual review recommended for final approval.`;
+  const lowerUrl = repoUrl.toLowerCase();
+  if (lowerUrl.includes('react') || lowerUrl.includes('next')) {
+    repo_type = "Web Development Project (React/Next)";
+    domain_match = true;
+  } else if (lowerUrl.includes('express') || lowerUrl.includes('node')) {
+    repo_type = "Backend API (Node/Express)";
+    domain_match = true; // Still considered Web Dev in this context
+  } else if (lowerUrl.includes('flutter') || lowerUrl.includes('dart') || lowerUrl.includes('android')) {
+    repo_type = "Mobile App Project";
+    domain_match = false;
+  } else if (lowerUrl.includes('python') || lowerUrl.includes('ipynb') || lowerUrl.includes('notebook')) {
+    repo_type = "Data Science Project";
+    domain_match = false;
+  }
+
+  // 2. Run Verification Checks (Simulated weighted model)
+  const checks = {
+    exists: true,               // 20%
+    commits: true,              // 20%
+    files_present: true,        // 20% (README, package.json etc)
+    pr_merged: true,            // 20%
+    domain_validation: domain_match // 20%
+  };
+
+  // Calculate Weighted Confidence Score
+  let confidence_score = 0;
+  if (checks.exists) confidence_score += 20;
+  if (checks.commits) confidence_score += 20;
+  if (checks.files_present) confidence_score += 20;
+  if (checks.pr_merged) confidence_score += 20;
+  if (checks.domain_validation) confidence_score += 20;
+
+  // Small random variance for "AI realism"
+  confidence_score = Math.max(0, Math.min(100, confidence_score + (Math.floor(Math.random() * 5))));
+
+  // 3. Generate AI Summary
+  let summary = "";
+  if (domain_match) {
+    summary = `AI Verification Summary: Confidence Score ${confidence_score}%. Repository detected as ${repo_type}. Core requirements satisfied: existence verified, active commit history detected, and required project files (README.md) present. Domain validation passed. Manual review recommended for final acceptance.`;
+  } else {
+    summary = `AI Verification Warning: Confidence Score ${confidence_score}%. Repository detected as ${repo_type}. Expected domain: Web Development. Core deliverable mismatch detected. Sanity checks (existence, commits) passed but architectural validation failed. HIGH MANUAL REVIEW RECOMMENDED.`;
+  }
+
+  // 4. Detailed Metrics
+  const ai_metadata = {
+    checks,
+    metrics: {
+      commits_found: Math.floor(Math.random() * 15) + 5,
+      required_files: ["README.md", "package.json"],
+      pr_status: "Merged Successfully",
+      branch_activity: "Active"
+    }
+  };
 
   return {
     ai_score: confidence_score,
-    ai_summary: summary
+    ai_summary: summary,
+    repo_type,
+    domain_match,
+    ai_metadata
   };
 };
 
@@ -99,7 +151,6 @@ const generateComplianceReceipt = async (agreement) => {
 // Phase 4: Oracle Trigger and Compliance Split
 const executeComplianceSplit = async (agreementId) => {
   try {
-    // 1. Fetch agreement details with joined profiles for wallet updates
     const { data: agreement, error: fetchError } = await supabase
       .from('agreements')
       .select('*, client:client_id(*), contractor:contractor_id(*)')
@@ -109,44 +160,58 @@ const executeComplianceSplit = async (agreementId) => {
     if (fetchError || !agreement) throw new Error("Agreement not found");
     if (agreement.status !== 'APPROVED') throw new Error("Agreement must be in APPROVED state for settlement");
 
-    const { contractor_amount, platform_fee, tax_reserve } = agreement;
+    const { contractor_amount } = agreement;
 
-    console.log(`⚖️ Executing Compliance Split for ${agreementId}:`);
-    console.log(`- Payout to Contractor: $${contractor_amount}`);
-    console.log(`- Platform Fee: $${platform_fee}`);
-    console.log(`- Tax Reserve: $${tax_reserve}`);
+    // Get Contractor's Wallet
+    const { data: wallet, error: walletFetchError } = await supabase
+      .from('wallets')
+      .select('id, balance')
+      .eq('owner_id', agreement.contractor_id)
+      .single();
 
-    // Update contractor's wallet balance
-    const currentBalance = parseFloat(agreement.contractor.wallet_balance || 0);
-    const newBalance = currentBalance + parseFloat(contractor_amount);
+    if (walletFetchError || !wallet) throw new Error("Contractor wallet not found");
+
+    const newBalance = parseFloat(wallet.balance || 0) + parseFloat(contractor_amount);
 
     const { error: walletError } = await supabase
-      .from('profiles')
-      .update({ wallet_balance: newBalance })
-      .eq('id', agreement.contractor_id);
+      .from('wallets')
+      .update({ balance: newBalance })
+      .eq('id', wallet.id);
 
     if (walletError) throw walletError;
 
-    // Phase 5: Generate Receipt
+    // Log Settlement Transaction
+    await supabase.from('transactions').insert([{
+      to_wallet: wallet.id,
+      amount: contractor_amount,
+      type: 'ESCROW_RELEASE',
+      agreement_id: agreementId
+    }]);
+
     const receiptUrl = await generateComplianceReceipt(agreement);
 
-    // Update agreement status to SETTLED and store receipt
-    const { error: statusError } = await supabase
+    // Update the latest deliverable with the compliance receipt
+    const { data: latestDeliverable } = await supabase
+      .from('deliverables')
+      .select('id')
+      .eq('agreement_id', agreementId)
+      .order('submitted_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (latestDeliverable) {
+       await supabase.from('deliverables').update({ receipt_url: receiptUrl }).eq('id', latestDeliverable.id);
+    }
+
+    await supabase
       .from('agreements')
       .update({ 
         status: 'SETTLED',
-        receipt_url: receiptUrl,
         updated_at: new Date().toISOString()
       })
       .eq('id', agreementId);
 
-    if (statusError) throw statusError;
-
-    return { 
-      success: true, 
-      receipt_url: receiptUrl,
-      payout: contractor_amount 
-    };
+    return { success: true, receipt_url: receiptUrl, payout: contractor_amount };
   } catch (error) {
     console.error("Compliance Split failed:", error.message);
     throw error;
@@ -176,22 +241,25 @@ app.post('/api/agreements', async (req, res) => {
     // Calculate Immutable Ledger
     const ledger = calculateImmutableLedger(amount, client?.country, contractor?.country);
 
+    // SELF-HEALING: Ensure profiles and wallets exist 
+    const ensureProfile = async (id, name, role, country, email, balance) => {
+      const { data } = await supabase.from('profiles').select('id').eq('id', id).single();
+      if (!data) {
+        await supabase.from('profiles').upsert([{ id, full_name: name, role, country, email, kyc_status: 'VERIFIED' }]);
+        await supabase.from('wallets').upsert([{ owner_id: id, balance }]);
+      }
+    };
+
+    await ensureProfile(client_id, 'Acme Corp (Client)', 'client', 'USA', 'client@nexus.com', 50000);
+    await ensureProfile(contractor_id, 'Jane Doe (Contractor)', 'contractor', 'India', 'contractor@nexus.com', 200);
+
     const { data, error } = await supabase
       .from('agreements')
       .insert([{
-        title,
-        description,
-        deliverables,
-        amount,
-        deadline,
-        client_id,
-        contractor_id,
-        trigger_type: trigger_type || 'manual_review',
-        status: 'DRAFT',
-        ...ledger
+        title, description, deliverables, amount, deadline, client_id, contractor_id,
+        trigger_type: trigger_type || 'manual_review', status: 'DRAFT', ...ledger
       }])
-      .select()
-      .single();
+      .select().single();
 
     if (error) throw error;
     res.json(data);
@@ -211,31 +279,42 @@ app.post('/api/agreements/:id/fund', async (req, res) => {
       .single();
 
     if (fetchError || !agreement) throw new Error("Agreement not found");
-    if (agreement.status !== 'DRAFT') throw new Error("Agreement already funded or in progress");
+    if (agreement.status !== 'ACCEPTED') throw new Error("Agreement must be accepted by contractor before funding");
 
     const amountToDeduct = parseFloat(agreement.amount);
 
-    // Simulated Wallet Deduction
-    const { data: clientProfile } = await supabase
-      .from('profiles')
-      .select('wallet_balance')
-      .eq('id', agreement.client_id)
+    // Get Client Wallet
+    let { data: wallet, error: walletError } = await supabase
+      .from('wallets')
+      .select('id, balance')
+      .eq('owner_id', agreement.client_id)
       .single();
 
-    const currentBalance = parseFloat(clientProfile.wallet_balance || 0);
-    if (currentBalance < amountToDeduct) throw new Error("Insufficient funds");
+    if (walletError || !wallet) {
+       // Auto-create wallet if missing
+       const { data: newWallet } = await supabase.from('wallets').insert([{ owner_id: agreement.client_id, balance: 50000 }]).select().single();
+       wallet = newWallet;
+    }
 
-    await supabase
-      .from('profiles')
-      .update({ wallet_balance: currentBalance - amountToDeduct })
-      .eq('id', agreement.client_id);
+    const currentBalance = parseFloat(wallet.balance || 0);
+    if (currentBalance < amountToDeduct) throw new Error("Insufficient funds. Use 'Add Funds' in Navbar.");
+
+    // Deduct from wallet
+    await supabase.from('wallets').update({ balance: currentBalance - amountToDeduct }).eq('id', wallet.id);
+
+    // Log Deposit Transaction
+    await supabase.from('transactions').insert([{
+      from_wallet: wallet.id,
+      amount: amountToDeduct,
+      type: 'ESCROW_DEPOSIT',
+      agreement_id: id
+    }]);
 
     const { data, error } = await supabase
       .from('agreements')
       .update({ status: 'FUNDED_AND_LOCKED', updated_at: new Date().toISOString() })
       .eq('id', id)
-      .select()
-      .single();
+      .select().single();
 
     if (error) throw error;
     res.json({ message: 'Capital secured and locked in vault.', data });
@@ -268,36 +347,69 @@ app.post('/api/agreements/:id/reject', async (req, res) => {
   }
 });
 
+// Phase 1 Step 4-B: Contractor Acceptance
+app.post('/api/agreements/:id/accept-contractor', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { data, error } = await supabase
+      .from('agreements')
+      .update({ 
+        status: 'ACCEPTED',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json({ message: 'Agreement accepted by contractor.', data });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Step 5: Work Submission
 app.post('/api/agreements/:id/submit', async (req, res) => {
   const { id } = req.params;
   const { deliverable_url } = req.body;
 
   try {
-    const { error: updateError } = await supabase
+    // Fetch agreement to verify and get contractor_id
+    const { data: agreement, error: fetchError } = await supabase
       .from('agreements')
-      .update({ 
-        deliverable_url, 
-        submitted_at: new Date().toISOString(),
-        status: 'IN_REVIEW' 
-      })
-      .eq('id', id);
+      .select('contractor_id')
+      .eq('id', id)
+      .single();
 
-    if (updateError) throw updateError;
+    if (fetchError || !agreement) throw new Error("Agreement not found");
+
+    // Insert into Deliverables
+    await supabase.from('deliverables').insert([{
+      agreement_id: id,
+      submission_url: deliverable_url,
+      submitted_by: agreement.contractor_id
+    }]);
 
     // Phase 2 Step 6: Trigger AI Analysis (Async simulated)
     const aiResult = await performAIAnalysis(deliverable_url);
     
+    // Insert into AI Reviews
+    await supabase.from('ai_reviews').insert([{
+      agreement_id: id,
+      ai_score: aiResult.ai_score,
+      ai_summary: aiResult.ai_summary,
+      domain_match: aiResult.domain_match,
+      ai_metadata: aiResult.ai_metadata
+    }]);
+
     const { data, error } = await supabase
       .from('agreements')
       .update({ 
-        ai_score: aiResult.ai_score,
-        ai_summary: aiResult.ai_summary,
+        status: 'IN_REVIEW',
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
-      .select()
-      .single();
+      .select().single();
 
     if (error) throw error;
     res.json({ message: 'Submission successful. AI analysis complete.', data });
@@ -306,23 +418,75 @@ app.post('/api/agreements/:id/submit', async (req, res) => {
   }
 });
 
-// Phase 3: Human Review (Approve/Reject)
+// Phase 3: Human Review (Approve/Reject) + Audit Logging
 app.post('/api/agreements/:id/reviews', async (req, res) => {
   const { id } = req.params;
-  const { decision } = req.body; // 'approve' or 'reject'
+  const { decision, reason } = req.body; // 'approve' or 'reject'
 
   try {
     const status = decision === 'approve' ? 'APPROVED' : 'DISPUTED';
     
-    const { data, error } = await supabase
+    // 1. Update Agreement Status
+    const { data: agreement, error: updateError } = await supabase
       .from('agreements')
       .update({ status, updated_at: new Date().toISOString() })
       .eq('id', id)
-      .select()
+      .select().single();
+
+    if (updateError) throw updateError;
+
+    // Fetch latest AI review for audit logging
+    const { data: aiReview } = await supabase.from('ai_reviews').select('ai_score').eq('agreement_id', id).order('created_at', { ascending: false }).limit(1).single();
+
+    // 2. Step 6: Create Audit Log entry
+    await supabase.from('audit_logs').insert([{
+        agreement_id: id,
+        reviewer: agreement.client_id,
+        ai_score: aiReview?.ai_score || 0,
+        decision,
+        reason: reason || 'Human verified decision'
+    }]);
+
+    res.json({ message: `Agreement ${status.toLowerCase()} successfully.`, data: agreement });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Phase 3 Path B: Request Changes
+app.post('/api/agreements/:id/request-changes', async (req, res) => {
+  const { id } = req.params;
+  const { reason } = req.body;
+
+  try {
+    const { data: agreement, error: fetchError } = await supabase
+      .from('agreements')
+      .select('*')
+      .eq('id', id)
       .single();
 
-    if (error) throw error;
-    res.json({ message: `Agreement ${status.toLowerCase()} successfully.`, data });
+    if (fetchError) throw fetchError;
+
+    const { error: updateError } = await supabase
+      .from('agreements')
+      .update({ 
+          status: 'FUNDED_AND_LOCKED', // Revert to funded so contractor can submit again
+          updated_at: new Date().toISOString() 
+      })
+      .eq('id', id);
+
+    if (updateError) throw updateError;
+
+    // Log the request for changes
+    await supabase.from('audit_logs').insert([{
+        agreement_id: id,
+        reviewer: agreement.client_id,
+        ai_score: agreement.ai_score,
+        decision: 'request_changes',
+        reason
+    }]);
+
+    res.json({ message: 'Changes requested successfully.' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -354,6 +518,36 @@ app.post('/api/agreements/:id/simulate-payment', async (req, res) => {
     // Then fund it
     const fundResponse = await axios.post(`http://localhost:${PORT}/api/agreements/${id}/fund`);
     res.json(fundResponse.data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Top up client wallet
+app.post('/api/profiles/:id/add-funds', async (req, res) => {
+  const { id } = req.params;
+  const { amount } = req.body;
+
+  try {
+    const { data: wallet, error: fetchError } = await supabase
+      .from('wallets')
+      .select('id, balance')
+      .eq('owner_id', id)
+      .single();
+
+    if (fetchError || !wallet) throw new Error("Wallet not found");
+
+    const newBalance = parseFloat(wallet.balance || 0) + parseFloat(amount);
+
+    const { data, error } = await supabase
+      .from('wallets')
+      .update({ balance: newBalance })
+      .eq('id', wallet.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json({ message: 'Funds added successfully', wallet_balance: data.balance });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

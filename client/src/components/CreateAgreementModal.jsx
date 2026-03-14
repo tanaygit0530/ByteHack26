@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { supabase } from '../lib/supabase';
-import { X, Calendar, DollarSign, User, FileText, Globe, Zap, AlertCircle } from 'lucide-react';
+import { X, Calendar, DollarSign, User, FileText, Globe, Zap, AlertCircle, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const CreateAgreementModal = ({ onClose, refresh, profile }) => {
@@ -64,7 +64,7 @@ const CreateAgreementModal = ({ onClose, refresh, profile }) => {
     
     // Simulate server ledger logic locally for UX
     const contractor = contractors.find(c => c.id === formData.contractor_id);
-    const clientCountry = profile.country || 'USA';
+    const clientCountry = profile?.country || 'USA';
     const contractorCountry = contractor?.country || 'India';
     
     let taxRate = 0.02; // General

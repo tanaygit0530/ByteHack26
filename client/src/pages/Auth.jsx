@@ -1,26 +1,27 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Briefcase, Globe, ShieldCheck, Mail, Lock, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 const DUMMY_PROFILES = {
   client: {
     id: '11111111-1111-1111-1111-111111111111',
     full_name: 'Acme Corp (Client)',
+    email: 'client@nexus.com',
     role: 'client',
     country: 'USA',
     company_type: 'LLC',
     kyc_status: 'VERIFIED',
-    wallet_balance: 50000.00,
     jurisdiction_metadata: { tax_regime: 'US-Resident', default_withholding: 0 }
   },
   contractor: {
     id: '22222222-2222-2222-2222-222222222222',
     full_name: 'Jane Doe (Contractor)',
+    email: 'contractor@nexus.com',
     role: 'contractor',
     country: 'India',
     company_type: 'Individual',
     kyc_status: 'VERIFIED',
-    wallet_balance: 150.00,
     jurisdiction_metadata: { tax_regime: 'IN-Resident', treaty_benefit: true }
   }
 };
@@ -31,9 +32,14 @@ const Auth = ({ onLogin }) => {
   const [step, setStep] = useState(1);
   const [kycSimulated, setKycSimulated] = useState(false);
 
-  const handleAuthAction = () => {
+  const handleAuthAction = async () => {
+    const profileData = DUMMY_PROFILES[role || 'client'];
+    
     if (view === 'signup' && step === 1) {
       setStep(2);
+      // Ensure profile exists in DB
+      await supabase.from('profiles').upsert([profileData]);
+      
       setTimeout(() => {
         setKycSimulated(true);
       }, 2000);
@@ -41,7 +47,8 @@ const Auth = ({ onLogin }) => {
     }
     
     // Login or Final Signup step
-    onLogin(DUMMY_PROFILES[role || 'client']);
+    await supabase.from('profiles').upsert([profileData]);
+    onLogin(profileData);
   };
 
   const countries = [
