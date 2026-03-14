@@ -57,6 +57,10 @@ CREATE TABLE public.agreements (
   status TEXT DEFAULT 'DRAFT',
 
   trigger_type TEXT DEFAULT 'manual_review',
+  
+  ai_score INTEGER,
+  ai_summary TEXT,
+  domain_match BOOLEAN,
 
   platform_fee DECIMAL(15,2),
   tax_reserve DECIMAL(15,2),

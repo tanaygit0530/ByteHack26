@@ -455,31 +455,29 @@ app.post('/api/agreements/:id/submit', async (req, res) => {
     const githubData = await fetchGithubData(repoDetails.owner, repoDetails.repo);
 
     // 3. AI Analysis
-    const aiResult = await analyzeRepositoryAI(agreement.deliverables, githubData);
+    const aiData = await analyzeRepositoryAI(agreement.deliverables, githubData);
 
-    // Insert into AI Reviews
-    await supabase.from('ai_reviews').insert([{
-      agreement_id: id,
-      repo_url: deliverable_url,
-      repo_owner: repoDetails.owner,
-      repo_name: repoDetails.repo,
-      ai_score: aiResult.confidence_score,
-      ai_summary: aiResult.summary,
-      domain_match: aiResult.domain_match,
-      ai_metadata: aiResult.binary_checks
-    }]);
-
-    const { data, error } = await supabase
+    // Save directly to agreements
+    const { data: updatedAgreement, error: updateError } = await supabase
       .from('agreements')
       .update({ 
-        status: 'VERIFICATION_COMPLETED',
+        ai_score: aiData.confidence_score,
+        ai_summary: aiData.summary,
+        domain_match: aiData.domain_match,
+        status: 'AI_VERIFIED',
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
       .select().single();
 
-    if (error) throw error;
-    res.json({ message: 'Submission successful. AI analysis complete.', data });
+    if (updateError) throw updateError;
+    
+    res.json({ 
+        success: true, 
+        ai_score: aiData.confidence_score,
+        ai_summary: aiData.summary,
+        data: updatedAgreement 
+    });
   } catch (error) {
     console.error("AI Error:", error);
     res.status(500).json({ error: error.message });

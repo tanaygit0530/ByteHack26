@@ -50,7 +50,7 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
     { id: 'ACCEPTED', label: 'Accepted', color: 'bg-blue-400' },
     { id: 'FUNDED_AND_LOCKED', label: 'Funded', color: 'bg-amber-500' },
     { id: 'IN_REVIEW', label: 'AI Reviewing', color: 'bg-blue-500' },
-    { id: 'VERIFICATION_COMPLETED', label: 'AI Verified', color: 'bg-purple-500' },
+    { id: 'AI_VERIFIED', label: 'AI Verified', color: 'bg-purple-500' },
     { id: 'APPROVED', label: 'Approved', color: 'bg-emerald-500' },
     { id: 'REJECTED', label: 'Rejected', color: 'bg-rose-500' },
     { id: 'DISPUTED', label: 'Disputed', color: 'bg-red-500' },
@@ -294,7 +294,7 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
           </button>
         )}
 
-        {agreement.status === 'VERIFICATION_COMPLETED' && aiReview && (
+        {agreement.status === 'AI_VERIFIED' && (
         <div className="p-6 bg-[#0B0F19] border-t border-[#2A344A]">
            <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
@@ -307,37 +307,31 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
                  </div>
               </div>
               <div className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shadow-sm border ${
-                aiReview.ai_score >= 95 ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
-                aiReview.ai_score >= 85 ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 
+                agreement.ai_score >= 95 ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
+                agreement.ai_score >= 85 ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 
                 'bg-rose-500/10 text-rose-500 border-rose-500/20'
               }`}>
-                {aiReview.ai_score}% Confidence
+                {agreement.ai_score}% Confidence
               </div>
            </div>
 
            <div className="p-4 rounded-xl bg-[#1A2235]/50 border border-white/5 mb-6">
               <p className="text-sm text-gray-400 italic leading-relaxed">
-                "{aiReview.ai_summary}"
+                "{agreement.ai_summary}"
               </p>
            </div>
 
            <div className="grid grid-cols-2 gap-4">
               <div className="p-3 rounded-xl bg-[#111827] border border-[#2A344A]">
                  <span className="text-[9px] text-gray-500 uppercase font-bold block mb-1">Domain Match (Web)</span>
-                 <span className={`text-xs font-bold ${aiReview.domain_match ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {aiReview.domain_match ? 'VERIFIED' : 'MISMATCH'}
-                 </span>
-              </div>
-              <div className="p-3 rounded-xl bg-[#111827] border border-[#2A344A]">
-                 <span className="text-[9px] text-gray-500 uppercase font-bold block mb-1">Metadata Flags</span>
-                 <span className="text-[10px] text-gray-400 font-mono block truncate">
-                    {aiReview.ai_metadata ? Object.entries(aiReview.ai_metadata).map(([k,v]) => `${k}:${v}`).join(', ') : 'None'}
+                 <span className={`text-xs font-bold ${agreement.domain_match ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {agreement.domain_match ? 'VERIFIED' : 'MISMATCH'}
                  </span>
               </div>
            </div>
         </div>
       )}
-        {agreement.status === 'VERIFICATION_COMPLETED' && role === 'client' && (
+        {agreement.status === 'AI_VERIFIED' && role === 'client' && (
           <div className="space-y-3 mt-4">
               <div className="flex gap-3">
                   <button
@@ -478,7 +472,7 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
             </div>
         )}
 
-        {agreement.status === 'VERIFICATION_COMPLETED' && role === 'contractor' && (
+        {agreement.status === 'AI_VERIFIED' && role === 'contractor' && (
             <div className="w-full py-4 flex items-center justify-center text-purple-400 font-bold text-sm">
                 AI Verification Complete. Awaiting Client Approval...
             </div>

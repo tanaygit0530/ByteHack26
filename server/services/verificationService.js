@@ -82,64 +82,67 @@ export const analyzeRepositoryAI = async (deliverables, githubData) => {
     }
 
     const genAI = new GoogleGenerativeAI(geminiApiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    const prompt = `You are a strict verification agent for a programmable escrow platform.
-You must ONLY compare the submitted GitHub repository against the specific deliverables defined in the database.
-Do not infer outside information.
-You must output structured JSON only.
-Binary verification answers must be YES or NO.
-You must produce a confidence score between 0 and 100.
-CONFIDENCE SCORE RULES:
-95-100: All deliverables satisfied
-85-94: Minor issues
-70-84: Missing important elements
-Below 70: Likely invalid submission
+    const prompt = `
+You are an AI verification agent for a programmable escrow platform.
+
+Strict rules:
+
+1. Only analyze the provided GitHub repository information.
+2. Only compare it with the contract deliverables.
+3. Do NOT infer external information.
+4. "confidence_score" must be an integer between 0 and 100.
+
+Return ONLY JSON.
+
+{
+"domain_match": true or false,
+"confidence_score": number,
+"summary": "short explanation of whether repo satisfies deliverables"
+}
 
 Contract Deliverables:
 ${deliverables}
 
-Repository Information:
-Description: ${githubData.metadata.description || 'None'}
-Languages: ${JSON.stringify(githubData.languages)}
-Commits Count: ${githubData.commitsCount}+
-File Structure (root): ${githubData.contents.map(c => c.name).join(', ')}
+Repository Description:
+${githubData.metadata.description || 'None'}
 
-README Extract (first 1000 chars):
-${githubData.readme.substring(0, 1000)}
+Languages:
+${JSON.stringify(githubData.languages)}
 
-Analyze if the repo matches the deliverables and return ONLY valid JSON in this format:
-{
-  "domain_match": true,
-  "binary_checks": {
-    "repo_public": "YES",
-    "has_web_framework": "YES",
-    "has_deployment_config": "YES"
-  },
-  "confidence_score": 90,
-  "summary": "Short explanation of the verifications"
-}`;
+README:
+${githubData.readme}
+`;
 
     try {
         const result = await model.generateContent(prompt);
-        const response = await result.response;
-        let output = response.text();
+        const text = result.response.text();
+        
+        console.log("AI RAW RESPONSE:", text);
 
-        // Strip markdown code fences if Gemini included them
-        output = output.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        const cleaned = text.replace(/`json/g,"").replace(/`/g,"").trim();
+        const aiData = JSON.parse(cleaned);
 
-        const resultJson = JSON.parse(output);
-        return resultJson;
+        // Normalize confidence score to 0-100 integer to prevent DB cast errors
+        if (typeof aiData.confidence_score === 'number') {
+            if (aiData.confidence_score <= 1 && aiData.confidence_score > 0) {
+                aiData.confidence_score = Math.round(aiData.confidence_score * 100);
+            } else {
+                aiData.confidence_score = Math.round(aiData.confidence_score);
+            }
+        } else {
+            aiData.confidence_score = 0;
+        }
+
+        console.log("AI PARSED:", aiData);
+        
+        return aiData;
     } catch (aiError) {
         console.error("Gemini AI Error:", aiError.message);
         // Safe fallback as per spec
         return {
             domain_match: false,
-            binary_checks: {
-                repo_public: "NO",
-                has_web_framework: "NO",
-                has_deployment_config: "NO"
-            },
             confidence_score: 0,
             summary: "AI verification failed."
         };
