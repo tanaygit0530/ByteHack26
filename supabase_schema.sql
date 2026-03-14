@@ -61,7 +61,7 @@ CREATE TABLE public.agreements (
   platform_fee DECIMAL(15,2),
   tax_reserve DECIMAL(15,2),
   contractor_amount DECIMAL(15,2),
-
+  compliance_report JSONB DEFAULT '{}',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()) NOT NULL
 );

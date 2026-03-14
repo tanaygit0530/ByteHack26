@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Clock, CheckCircle2, AlertCircle, ExternalLink, ArrowRight, ShieldCheck, DollarSign, FileText } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
+import ComplianceCertificateModal from './ComplianceCertificateModal';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -11,6 +12,7 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
   const [auditLogs, setAuditLogs] = useState([]);
   const [aiReview, setAiReview] = useState(null);
   const [deliverable, setDeliverable] = useState(null);
+  const [showCertificate, setShowCertificate] = useState(false);
 
   useEffect(() => {
     fetchRelatedData();
@@ -51,7 +53,10 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
     { id: 'APPROVED', label: 'Approved', color: 'bg-emerald-500' },
     { id: 'REJECTED', label: 'Rejected', color: 'bg-rose-500' },
     { id: 'DISPUTED', label: 'Disputed', color: 'bg-red-500' },
+    { id: 'ARBITRATION', label: 'Arbitration', color: 'bg-purple-600' },
     { id: 'SETTLED', label: 'Settled', color: 'bg-indigo-500' },
+    { id: 'REFUNDED', label: 'Refunded', color: 'bg-gray-600' },
+    { id: 'PARTIAL_SETTLED', label: 'Partial Payout', color: 'bg-cyan-600' },
   ];
 
   const currentStatusIndex = statuses.findIndex(s => s.id === agreement.status);
@@ -73,14 +78,31 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
         const url = prompt("Submit Deliverable URL (e.g. GitHub Repo):");
         if (!url) return;
         await axios.post(`${API_BASE_URL}/agreements/${agreement.id}/submit`, { deliverable_url: url });
-      } else if (action === 'request-changes') {
-        const reason = prompt("Describe requested changes:");
+      } else if (action === 'request-changes' || action === 'dispute') {
+        const reason = prompt(action === 'dispute' ? "Describe the dispute reason:" : "Describe requested changes:");
         if (!reason) return;
-        await axios.post(`${API_BASE_URL}/agreements/${agreement.id}/request-changes`, { reason });
+        const endpoint = action === 'dispute' ? 'dispute' : 'request-changes';
+        await axios.post(`${API_BASE_URL}/agreements/${agreement.id}/${endpoint}`, { reason });
       } else if (action === 'approve' || action === 'reject') {
-        const reason = action === 'reject' ? prompt("Enter dispute reason:") : 'Human verified approval';
+        const reason = action === 'reject' ? prompt("Enter rejection reason:") : 'Human verified approval';
         if (action === 'reject' && !reason) return;
         await axios.post(`${API_BASE_URL}/agreements/${agreement.id}/reviews`, { decision: action, reason });
+      } else if (action === 'escalate') {
+        await axios.post(`${API_BASE_URL}/agreements/${agreement.id}/escalate`);
+      } else if (action === 'arbitrate') {
+        const outcome = prompt("Enter Outcome (CONTRACTOR_WINS, CLIENT_WINS, PARTIAL_SETTLEMENT):");
+        if (!outcome) return;
+        let split_data = null;
+        if (outcome === 'PARTIAL_SETTLEMENT') {
+            const percent = prompt("Enter Contractor Percentage (0-100):");
+            split_data = { contractor_percent: percent };
+        }
+        await axios.post(`${API_BASE_URL}/agreements/${agreement.id}/arbitrate`, { 
+            outcome, 
+            arbiter_id: index, // In a real app this would be the current user's profile ID
+            reason: "Arbiter binding decision",
+            split_data
+        });
       }
     } catch (error) {
       alert("Action failed: " + (error.response?.data?.error || error.message));
@@ -313,33 +335,78 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
         </div>
       )}
         {agreement.status === 'IN_REVIEW' && role === 'client' && (
-          <div className="space-y-3">
+          <div className="space-y-3 mt-4">
               <div className="flex gap-3">
                   <button
                     onClick={() => handleAction('approve')}
                     disabled={loading}
-                    className="flex-1 py-3 rounded-lg bg-emerald-600 text-white font-medium flex items-center justify-center gap-2 hover:bg-emerald-700 active:scale-95 transition-all shadow-md"
+                    className="flex-1 py-4 px-6 rounded-2xl bg-emerald-600/10 border border-emerald-500/20 text-emerald-400 text-sm font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-600 hover:text-white transition-all shadow-lg active:scale-95 disabled:opacity-50"
                   >
                     <CheckCircle2 className="w-5 h-5" />
-                    Approve
+                    Approve Deliverable
                   </button>
-                  <button
-                    onClick={() => handleAction('request-changes')}
+                  <button 
+                    onClick={() => handleAction('dispute')}
                     disabled={loading}
-                    className="flex-1 py-3 rounded-lg bg-indigo-600 text-white font-medium flex items-center justify-center gap-2 hover:bg-indigo-700 active:scale-95 transition-all shadow-md"
+                    className="flex-1 py-4 px-6 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-sm font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-rose-500 hover:text-white transition-all shadow-lg active:scale-95 disabled:opacity-50"
                   >
-                    <ArrowRight className="w-5 h-5 rotate-180" />
-                    Fixes
+                    <AlertCircle className="w-5 h-5" />
+                    Reject & Dispute
                   </button>
               </div>
-              <button
-                onClick={() => handleAction('reject')}
-                disabled={loading}
-                className="w-full py-2 rounded-lg bg-rose-600/10 border border-rose-600/20 text-rose-500 font-bold text-xs hover:bg-rose-600/20 transition-all uppercase tracking-widest"
-              >
-                Open Dispute / Reject
-              </button>
           </div>
+        )}
+
+        {agreement.status === 'DISPUTED' && role === 'client' && (
+           <button 
+             onClick={() => handleAction('escalate')}
+             disabled={loading}
+             className="w-full py-4 px-6 rounded-2xl bg-indigo-600/10 border border-indigo-600/20 text-indigo-400 text-sm font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-600 hover:text-white transition-all shadow-lg active:scale-95 disabled:opacity-50 mt-4"
+           >
+             <ShieldCheck className="w-5 h-5" />
+             Escalate to Arbitration
+           </button>
+        )}
+
+        {agreement.status === 'ARBITRATION' && role === 'admin' && (
+          <div className="mt-4 p-4 rounded-2xl bg-indigo-900/20 border border-indigo-500/30">
+            <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-3 text-center">Protocol Arbiter Panel</h4>
+            <div className="grid grid-cols-1 gap-2">
+                <button 
+                  onClick={() => handleAction('arbitrate')}
+                  className="py-3 rounded-xl bg-emerald-600/20 border border-emerald-600/40 text-[10px] font-black uppercase text-emerald-400 hover:bg-emerald-600 hover:text-white transition-all"
+                >
+                  Final Decision: Release Funds
+                </button>
+            </div>
+          </div>
+        )}
+
+        {(agreement.status === 'DISPUTED' || agreement.status === 'ARBITRATION') && (
+            <div className="mt-4 p-4 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-orange-500 shrink-0" />
+                <p className="text-xs text-orange-200 leading-relaxed italic">
+                    Funds are currently <span className="font-black uppercase underline">frozen</span> in the nexus vault.
+                </p>
+            </div>
+        )}
+
+        {agreement.status === 'DISPUTED' && role === 'contractor' && (
+          <button 
+            onClick={() => handleAction('submit')}
+            disabled={loading}
+            className="w-full py-4 px-6 rounded-2xl bg-blue-600/10 border border-blue-600/20 text-blue-400 text-sm font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-blue-600 hover:text-white transition-all shadow-lg active:scale-95 disabled:opacity-50 mt-4"
+          >
+            <ExternalLink className="w-5 h-5" />
+            Upload Revised Work
+          </button>
+        )}
+
+        {agreement.status === 'REFUNDED' && (
+           <div className="w-full py-4 rounded-xl bg-gray-500/10 border border-gray-500/20 text-gray-400 font-bold flex items-center justify-center gap-2 mt-4">
+              <AlertCircle className="w-5 h-5" /> 
+              Capital Refunded to Client
+           </div>
         )}
 
         {agreement.status === 'APPROVED' && role === 'client' && (
@@ -369,7 +436,31 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
                       <FileText className="w-4 h-4" /> DOWNLOAD COMPLIANCE RECEIPT
                   </a>
               )}
+              {agreement.compliance_report && (
+                  <button 
+                    onClick={() => setShowCertificate(true)}
+                    className="w-full py-1 text-[10px] font-black uppercase text-indigo-400/60 hover:text-indigo-400 flex items-center justify-center gap-2 transition-all mt-1"
+                  >
+                      <ShieldCheck className="w-3 h-3" /> View Settlement Certificate
+                  </button>
+              )}
           </div>
+        )}
+
+        {(agreement.status === 'PARTIAL_SETTLED' || agreement.status === 'REFUNDED') && agreement.compliance_report && (
+            <button 
+                onClick={() => setShowCertificate(true)}
+                className="w-full py-3 text-[10px] font-black uppercase text-indigo-400/60 hover:text-indigo-400 flex items-center justify-center gap-2 transition-all mt-2 border border-indigo-500/10 rounded-xl hover:bg-indigo-500/5"
+            >
+                <ShieldCheck className="w-4 h-4" /> View Compliance Certificate
+            </button>
+        )}
+
+        {agreement.status === 'PARTIAL_SETTLED' && (
+           <div className="w-full py-4 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 font-bold flex items-center justify-center gap-2">
+              <CheckCircle2 className="w-5 h-5" />
+              Arbiter-Moderated Partial Disbursal
+           </div>
         )}
 
         {agreement.status === 'DRAFT' && role === 'contractor' && (
@@ -419,6 +510,12 @@ const AgreementCard = ({ agreement, role, index, refreshProfile }) => {
             </div>
         )}
       </div>
+
+      <ComplianceCertificateModal 
+        isOpen={showCertificate} 
+        onClose={() => setShowCertificate(false)} 
+        agreement={agreement} 
+      />
     </motion.div>
   );
 };

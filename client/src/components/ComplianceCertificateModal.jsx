@@ -1,0 +1,154 @@
+import React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, ShieldCheck, FileText, Globe, DollarSign, Clock, CheckCircle2, ChevronRight, Hash } from 'lucide-react';
+
+const ComplianceCertificateModal = ({ isOpen, onClose, agreement }) => {
+  if (!agreement?.compliance_report || !isOpen) return null;
+
+  const report = agreement.compliance_report;
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <motion.div
+           initial={{ opacity: 0 }}
+           animate={{ opacity: 1 }}
+           exit={{ opacity: 0 }}
+           onClick={onClose}
+           className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+        />
+        
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.9, y: 20 }}
+          className="relative w-full max-w-2xl bg-[#0B0F19] border border-[#2A344A] rounded-3xl overflow-hidden shadow-2xl"
+        >
+          {/* Header */}
+          <div className="relative p-6 bg-gradient-to-br from-indigo-500/10 via-transparent to-transparent border-b border-[#2A344A]">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/20">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-black text-white uppercase tracking-tighter">Settlement Certificate</h2>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Nexus Immutable Compliance Ledger v1.0</p>
+                </div>
+              </div>
+              <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full text-gray-400 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          <div className="p-8 max-h-[80vh] overflow-y-auto custom-scrollbar space-y-8">
+            {/* Proof Section */}
+            <div className="space-y-4">
+                <div className="flex items-center gap-2 text-[10px] font-black text-indigo-400 uppercase tracking-widest">
+                    <Hash className="w-3 h-3" /> Cryptographic Transaction Proof
+                </div>
+                <div className="p-4 rounded-xl bg-[#111827] border border-[#2A344A] font-mono text-[11px] text-gray-300 break-all select-all hover:bg-indigo-500/5 transition-colors group">
+                    <span className="text-indigo-400 font-bold">TxID:</span> {report.tx_hash}
+                </div>
+            </div>
+
+            {/* Core Data Grid */}
+            <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                        <Clock className="w-3 h-3" /> Verified Timestamps
+                    </div>
+                    <div className="space-y-2">
+                        <div className="flex justify-between text-[11px]">
+                            <span className="text-gray-500">Funded:</span>
+                            <span className="text-gray-300">{new Date(report.timestamps.agreement_created).toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between text-[11px]">
+                            <span className="text-gray-500">Settled:</span>
+                            <span className="text-gray-300 font-bold text-emerald-400">{new Date(report.timestamps.settlement_executed).toLocaleString()}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                        <Globe className="w-3 h-3" /> Jurisdiction Validation
+                    </div>
+                    <div className="space-y-2">
+                        <div className="flex justify-between text-[11px]">
+                            <span className="text-gray-500">Client:</span>
+                            <span className="text-white font-bold">{report.jurisdiction.client}</span>
+                        </div>
+                        <div className="flex justify-between text-[11px]">
+                            <span className="text-gray-500">Contractor:</span>
+                            <span className="text-white font-bold">{report.jurisdiction.contractor}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Financial Breakdown */}
+            <div className="p-6 rounded-2xl bg-[#111827] border border-[#2A344A] relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-5">
+                    <DollarSign className="w-24 h-24" />
+                </div>
+                <h3 className="text-xs font-black text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                    <DollarSign className="w-4 h-4 text-emerald-400" /> Financial Reconciliation
+                </h3>
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-500">Gross Contract Value</span>
+                        <span className="text-white font-mono font-bold">${report.financials.gross.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                        <span className="text-gray-500">Platform Fee (De-Escrow)</span>
+                        <span className="text-rose-400 font-mono">-${report.financials.platform_fee}</span>
+                    </div>
+                    <div className="pt-4 border-t border-[#2A344A] flex justify-between items-center">
+                        <span className="text-[10px] font-black text-indigo-400 uppercase">Net Disbursed</span>
+                        <span className="text-xl text-emerald-400 font-black font-mono tracking-tighter">${report.financials.contractor_received.toLocaleString()}</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Compliance & Tax Liability */}
+            <div className="p-6 rounded-2xl bg-amber-500/5 border border-amber-500/10 border-l-4 border-l-amber-500">
+                <h3 className="text-xs font-black text-amber-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    Regulatory Tax Liability Statement
+                </h3>
+                <p className="text-[11px] text-amber-200/70 leading-relaxed mb-4 italic">
+                    Based on the {report.jurisdiction.client}/{report.jurisdiction.contractor} cross-border framework, an estimated liability of <span className="text-amber-400 font-bold">{report.tax_liability_estimate.rate}</span> applies. Funds were not withheld; payment routing was executed in full to the service provider.
+                </p>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-black/40">
+                    <span className="text-[10px] font-bold text-gray-500 uppercase">Estimated Obligation</span>
+                    <span className="text-xs text-white font-mono font-bold font-black">${report.tax_liability_estimate.obligation_usd} USD</span>
+                </div>
+            </div>
+
+            {/* Footer Verification */}
+            <div className="pt-4 flex items-center justify-between border-t border-[#2A344A]">
+                <div className="flex items-center gap-6">
+                    <div className="flex flex-col">
+                        <span className="text-[8px] text-gray-500 uppercase font-black">AI Confidence</span>
+                        <span className="text-xs text-white font-bold">{report.proof_of_work.ai_confidence}%</span>
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="text-[8px] text-gray-500 uppercase font-black">Delivery Proof</span>
+                        <a href={report.proof_of_work.submission} target="_blank" className="text-xs text-indigo-400 hover:underline flex items-center gap-1 font-bold">
+                            View Repo <ExternalLink className="w-2.5 h-2.5" />
+                        </a>
+                    </div>
+                </div>
+                <div className="px-4 py-2 rounded-lg bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase tracking-tighter flex items-center gap-2 border border-emerald-500/20">
+                    <CheckCircle2 className="w-3 h-3" /> Ledger Verified
+                </div>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  );
+};
+
+export default ComplianceCertificateModal;

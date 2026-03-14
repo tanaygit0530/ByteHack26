@@ -149,7 +149,7 @@ const generateComplianceReceipt = async (agreement) => {
 };
 
 // Phase 4: Oracle Trigger and Compliance Split
-const executeComplianceSplit = async (agreementId) => {
+const executeSettlement = async (agreementId, outcome, arbiterId = null, splitData = null) => {
   try {
     const { data: agreement, error: fetchError } = await supabase
       .from('agreements')
@@ -158,62 +158,110 @@ const executeComplianceSplit = async (agreementId) => {
       .single();
 
     if (fetchError || !agreement) throw new Error("Agreement not found");
-    if (agreement.status !== 'APPROVED') throw new Error("Agreement must be in APPROVED state for settlement");
 
-    const { contractor_amount } = agreement;
+    const { amount, contractor_id, client_id } = agreement;
+    let contractorPayout = 0;
+    let clientRefund = 0;
+    let status = 'SETTLED';
 
-    // Get Contractor's Wallet
-    const { data: wallet, error: walletFetchError } = await supabase
-      .from('wallets')
-      .select('id, balance')
-      .eq('owner_id', agreement.contractor_id)
-      .single();
-
-    if (walletFetchError || !wallet) throw new Error("Contractor wallet not found");
-
-    const newBalance = parseFloat(wallet.balance || 0) + parseFloat(contractor_amount);
-
-    const { error: walletError } = await supabase
-      .from('wallets')
-      .update({ balance: newBalance })
-      .eq('id', wallet.id);
-
-    if (walletError) throw walletError;
-
-    // Log Settlement Transaction
-    await supabase.from('transactions').insert([{
-      to_wallet: wallet.id,
-      amount: contractor_amount,
-      type: 'ESCROW_RELEASE',
-      agreement_id: agreementId
-    }]);
-
-    const receiptUrl = await generateComplianceReceipt(agreement);
-
-    // Update the latest deliverable with the compliance receipt
-    const { data: latestDeliverable } = await supabase
-      .from('deliverables')
-      .select('id')
-      .eq('agreement_id', agreementId)
-      .order('submitted_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (latestDeliverable) {
-       await supabase.from('deliverables').update({ receipt_url: receiptUrl }).eq('id', latestDeliverable.id);
+    if (outcome === 'CONTRACTOR_WINS') {
+        contractorPayout = parseFloat(agreement.contractor_amount);
+        status = 'SETTLED';
+    } else if (outcome === 'CLIENT_WINS') {
+        clientRefund = parseFloat(amount); // Refund total deposit
+        status = 'REFUNDED';
+    } else if (outcome === 'PARTIAL_SETTLEMENT') {
+        const contractorCut = parseFloat(splitData.contractor_percent) / 100;
+        contractorPayout = parseFloat(amount) * contractorCut;
+        clientRefund = parseFloat(amount) - contractorPayout;
+        status = 'PARTIAL_SETTLED';
     }
 
-    await supabase
-      .from('agreements')
+    // Process Contractor Payout
+    if (contractorPayout > 0) {
+      const { data: cWallet } = await supabase.from('wallets').select('id, balance').eq('owner_id', contractor_id).single();
+      await supabase.from('wallets').update({ balance: parseFloat(cWallet.balance) + contractorPayout }).eq('id', cWallet.id);
+      await supabase.from('transactions').insert([{
+        to_wallet: cWallet.id,
+        amount: contractorPayout,
+        type: 'ESCROW_RELEASE',
+        agreement_id: agreementId
+      }]);
+
+      // Log Platform Fee Routing
+      if (parseFloat(agreement.platform_fee) > 0) {
+        await supabase.from('transactions').insert([{
+          amount: parseFloat(agreement.platform_fee),
+          type: 'PLATFORM_FEE',
+          agreement_id: agreementId
+        }]);
+      }
+    }
+
+    // Process Client Refund
+    if (clientRefund > 0) {
+      const { data: clWallet } = await supabase.from('wallets').select('id, balance').eq('owner_id', client_id).single();
+      await supabase.from('wallets').update({ balance: parseFloat(clWallet.balance) + clientRefund }).eq('id', clWallet.id);
+      await supabase.from('transactions').insert([{
+        to_wallet: clWallet.id,
+        amount: clientRefund,
+        type: 'REFUND',
+        agreement_id: agreementId
+      }]);
+    }
+
+    // Final Audit Log
+    const { data: aiReview } = await supabase.from('ai_reviews').select('ai_score').eq('agreement_id', agreementId).order('created_at', { ascending: false }).limit(1).single();
+    await supabase.from('audit_logs').insert([{
+        agreement_id: agreementId,
+        reviewer: arbiterId || client_id,
+        ai_score: aiReview?.ai_score || 0,
+        decision: outcome,
+        reason: outcome === 'CONTRACTOR_WINS' ? 'Satisfactory completion' : 'Arbitration resolved'
+    }]);
+
+    // Construct Compliance Certificate
+    const { data: latestDeliverable } = await supabase.from('deliverables').select('submission_url').eq('agreement_id', agreementId).order('submitted_at', { ascending: false }).limit(1).single();
+
+    const complianceReport = {
+      tx_hash: `settle_0x${Math.random().toString(16).slice(2)}${Date.now().toString(16)}`,
+      timestamps: {
+        agreement_created: agreement.created_at,
+        settlement_executed: new Date().toISOString()
+      },
+      jurisdiction: {
+        client: agreement.client?.country || 'USA',
+        contractor: agreement.contractor?.country || 'India'
+      },
+      financials: {
+        gross: amount,
+        platform_fee: agreement.platform_fee,
+        tax_reserve_metadata: agreement.tax_reserve,
+        contractor_received: contractorPayout,
+        client_refunded: clientRefund
+      },
+      tax_liability_estimate: {
+        rate: "10%",
+        obligation_usd: (parseFloat(amount) * 0.10).toFixed(2),
+        note: "Contractor responsible for local remittance"
+      },
+      proof_of_work: {
+        submission: latestDeliverable?.submission_url,
+        ai_confidence: aiReview?.ai_score
+      }
+    };
+
+    await supabase.from('agreements')
       .update({ 
-        status: 'SETTLED',
-        updated_at: new Date().toISOString()
+        status, 
+        updated_at: new Date().toISOString(),
+        compliance_report: complianceReport
       })
       .eq('id', agreementId);
 
-    return { success: true, receipt_url: receiptUrl, payout: contractor_amount };
+    return { success: true, status, compliance_report: complianceReport };
   } catch (error) {
-    console.error("Compliance Split failed:", error.message);
+    console.error("Settlement failed:", error.message);
     throw error;
   }
 };
@@ -447,7 +495,17 @@ app.post('/api/agreements/:id/reviews', async (req, res) => {
         reason: reason || 'Human verified decision'
     }]);
 
-    res.json({ message: `Agreement ${status.toLowerCase()} successfully.`, data: agreement });
+    // 3. If approved, trigger settlement immediately
+    let settlementResult = null;
+    if (decision === 'approve') {
+       settlementResult = await executeSettlement(id, 'CONTRACTOR_WINS');
+    }
+
+    res.json({ 
+      message: `Agreement ${status.toLowerCase()} successfully.`, 
+      data: agreement,
+      settlement: settlementResult 
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -492,12 +550,62 @@ app.post('/api/agreements/:id/request-changes', async (req, res) => {
   }
 });
 
-// Phase 4: Oracle Trigger (Settlement)
+// Step 8 & 9: Dispute Initiation
+app.post('/api/agreements/:id/dispute', async (req, res) => {
+  const { id } = req.params;
+  const { reason } = req.body;
+  try {
+    const { data: agreement, error } = await supabase
+      .from('agreements')
+      .update({ status: 'DISPUTED', updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select().single();
+
+    if (error) throw error;
+
+    await supabase.from('audit_logs').insert([{
+      agreement_id: id,
+      reviewer: agreement.client_id,
+      decision: 'DISPUTE_TRIGGERED',
+      reason
+    }]);
+
+    res.json({ message: 'Dispute filed. Negotiation window active.', data: agreement });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Step 10: Arbitration Escalation
+app.post('/api/agreements/:id/escalate', async (req, res) => {
+    const { id } = req.params;
+    try {
+      await supabase.from('agreements').update({ status: 'ARBITRATION' }).eq('id', id);
+      res.json({ message: 'Case escalated to human arbiter.' });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+});
+
+// Step 12: Arbitration Decision
+app.post('/api/agreements/:id/arbitrate', async (req, res) => {
+  const { id } = req.params;
+  const { outcome, arbiter_id, reason, split_data } = req.body;
+  
+  try {
+    const result = await executeSettlement(id, outcome, arbiter_id, split_data);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Phase 4: Oracle Trigger (Settlement - Happy Path)
 app.post('/api/agreements/:id/settle', async (req, res) => {
   const { id } = req.params;
   try {
-    const result = await executeComplianceSplit(id);
-    res.json({ message: 'Oracle trigger successful. Compliance split executed.', ...result });
+    const result = await executeSettlement(id, 'CONTRACTOR_WINS');
+    res.json({ message: 'Settlement executed.', ...result });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

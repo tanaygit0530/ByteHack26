@@ -23,6 +23,15 @@ const DUMMY_PROFILES = {
     company_type: 'Individual',
     kyc_status: 'VERIFIED',
     jurisdiction_metadata: { tax_regime: 'IN-Resident', treaty_benefit: true }
+  },
+  admin: {
+    id: '33333333-3333-3333-3333-333333333333',
+    full_name: 'Protocol Arbiter',
+    email: 'arbiter@nexus.com',
+    role: 'admin',
+    country: 'Global',
+    company_type: 'Organization',
+    kyc_status: 'VERIFIED'
   }
 };
 
@@ -266,6 +275,12 @@ const Auth = ({ onLogin }) => {
                       className="py-3 rounded-xl bg-[#1A2235] border border-[#2A344A] text-xs font-bold text-white hover:bg-[#1f2942] transition-all"
                     >
                       Login (Contractor)
+                    </button>
+                    <button 
+                      onClick={() => onLogin(DUMMY_PROFILES.admin)}
+                      className="col-span-2 py-3 mt-2 rounded-xl bg-indigo-600/20 border border-indigo-600/40 text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:bg-indigo-600 hover:text-white transition-all shadow-lg"
+                    >
+                      Login as Protocol Arbiter
                     </button>
                   </div>
                 </div>
