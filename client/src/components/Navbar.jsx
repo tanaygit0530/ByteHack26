@@ -59,7 +59,7 @@ const Navbar = ({ profile, onLogout }) => {
 
   const navLinks = [
     { name: 'Agreements', path: '/' },
-    { name: 'C2C Deals', path: '/c2c' },
+    { name: 'B2B Deals', path: '/c2c' },
   ];
 
   return (

@@ -81,9 +81,9 @@ app.put('/api/agreements/:id', async (req, res) => {
 const calculateImmutableLedger = (amount) => {
   const totalAmount = parseFloat(amount);
 
-  const platform_fee = totalAmount * 0.01; // Phase 4 Requirement: 1%
-  const estimated_tax = totalAmount * 0.10; // Phase 4 Requirement: 10% (Recorded only)
-  const receiver_amount = totalAmount - platform_fee;
+  const platform_fee = totalAmount * 0.01; // 1% Platform Fee
+  const estimated_tax = totalAmount * 0.18; // 18% Regulatory Tax Reserve
+  const receiver_amount = totalAmount - platform_fee - estimated_tax;
 
   return {
     platform_fee,

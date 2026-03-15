@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Clock, CheckCircle2, AlertCircle, ExternalLink, ArrowRight, ShieldCheck, DollarSign, FileText, Lock } from 'lucide-react';
+import { Clock, CheckCircle2, AlertCircle, ExternalLink, ArrowRight, ShieldCheck, DollarSign, FileText, Lock, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import ComplianceCertificateModal from './ComplianceCertificateModal';
@@ -261,19 +261,28 @@ const AgreementCard = ({ agreement, currentUserId, index, refreshProfile, isC2CV
         {/* Details Grid */}
         <div className="grid grid-cols-2 gap-4 pt-4">
           <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100">
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Fee Transparency</p>
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs">
-                <span className="text-gray-500">Service Fee</span>
-                <span className="text-gray-700 font-bold">-${fees.platform}</span>
+            <p className="text-[10px] font-black text-[#867361] uppercase tracking-widest mb-4 flex items-center gap-2">
+              <Globe className="w-3 h-3" /> Financial Breakdown
+            </p>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center text-[11px]">
+                <span className="text-gray-600 font-semibold">Agreement Amount</span>
+                <span className="text-[#1a1a1a] font-bold">${parseFloat(agreement.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
               </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-gray-500">Tax Reserve</span>
-                <span className="text-gray-700 font-bold">-${fees.tax}</span>
+              <div className="flex justify-between items-center text-[11px]">
+                <span className="text-gray-600 font-semibold">Platform Service Fee (1%)</span>
+                <span className="text-rose-500 font-bold">-${fees.platform}</span>
               </div>
-              <div className="pt-2 mt-2 border-t border-gray-200 flex justify-between text-sm font-black">
-                <span className="text-[#867361]">Net Disbursement</span>
-                <span className="text-emerald-600">${fees.contractor}</span>
+              <div className="flex justify-between items-start text-[11px]">
+                <div className="flex flex-col">
+                  <span className="text-gray-600 font-semibold">Regulatory Tax Reserve</span>
+                  <span className="text-[8px] text-amber-600 font-black uppercase tracking-tight">US-INDIA TREATY (18%)</span>
+                </div>
+                <span className="text-rose-500 font-bold">-${fees.tax}</span>
+              </div>
+              <div className="pt-3 mt-3 border-t border-gray-200 flex justify-between items-center">
+                <span className="text-[10px] font-black text-emerald-600 uppercase tracking-tight">Net Contractor Payout</span>
+                <span className="text-lg font-black text-emerald-600">${fees.contractor}</span>
               </div>
             </div>
           </div>

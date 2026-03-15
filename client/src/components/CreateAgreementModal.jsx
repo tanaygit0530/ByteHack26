@@ -76,9 +76,7 @@ const CreateAgreementModal = ({ onClose, refresh, profile, isC2CView }) => {
     const clientCountry = profile?.country || 'USA';
     const contractorCountry = contractor?.country || 'India';
 
-    let taxRate = 0.02;
-    if (clientCountry === 'USA' && contractorCountry === 'India') taxRate = 0.10;
-    else if (clientCountry === contractorCountry) taxRate = 0.05;
+    let taxRate = 0.18; // Default 18% per request
 
     const plat = amount * 0.01;
     const tax = amount * taxRate;
@@ -87,7 +85,7 @@ const CreateAgreementModal = ({ onClose, refresh, profile, isC2CView }) => {
       platform: plat.toFixed(2),
       tax: tax.toFixed(2),
       contractor: (amount - plat - tax).toFixed(2),
-      taxLabel: taxRate === 0.10 ? 'US-India Treaty (10%)' : taxRate === 0.05 ? 'Domestic Compliance (5%)' : 'Cross-Border Protocol (2%)'
+      taxLabel: 'Regulatory Tax Reserve (18%)'
     });
   };
 
@@ -152,7 +150,7 @@ const CreateAgreementModal = ({ onClose, refresh, profile, isC2CView }) => {
                 <Zap className="w-5 h-5 fill-current" />
               </div>
               <h2 className="text-3xl font-extrabold text-[#1a1a1a] tracking-tight">
-                {isC2CView ? 'New C2C Deal' : 'New Smart Agreement'}
+                {isC2CView ? 'New B2B Deal' : 'New Smart Agreement'}
               </h2>
             </div>
             <p className="text-gray-500 font-medium tracking-wide">
@@ -319,41 +317,38 @@ const CreateAgreementModal = ({ onClose, refresh, profile, isC2CView }) => {
             </div>
 
             {/* Fee Ledger Display */}
-            <div className="p-6 rounded-[32px] bg-[#867361]/5 border border-[#867361]/10 overflow-hidden relative group">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-[#867361]/5 blur-3xl rounded-full" />
+            <div className="p-6 rounded-[32px] bg-gray-50/50 border border-gray-100 overflow-hidden relative group">
               <h3 className="text-[10px] font-black text-[#867361] uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                <Globe className="w-3.5 h-3.5" /> Financial Breakdown
+                <Globe className="w-4 h-4" /> Financial Breakdown
               </h3>
 
               {ledger ? (
                 <div className="space-y-4 relative z-10">
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-500 text-xs font-medium">Agreement Amount</span>
-                    <span className="text-[#1a1a1a] font-mono text-xs">${parseFloat(formData.amount).toFixed(2)}</span>
+                    <span className="text-gray-600 text-xs font-semibold">Agreement Amount</span>
+                    <span className="text-[#1a1a1a] font-bold text-xs">${parseFloat(formData.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-500 text-xs font-medium">Platform Service Fee (1%)</span>
-                    <span className="text-rose-600 font-mono text-xs">-${ledger.platform}</span>
+                    <span className="text-gray-600 text-xs font-semibold">Platform Service Fee (1%)</span>
+                    <span className="text-rose-500 font-bold text-xs">-${parseFloat(ledger.platform).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <div className="flex flex-col">
-                      <span className="text-gray-500 text-xs font-medium">Regulatory Tax Reserve</span>
-                      <span className="text-[9px] text-amber-600 font-black uppercase tracking-tighter mt-0.5">{ledger.taxLabel}</span>
+                      <span className="text-gray-600 text-xs font-semibold">Regulatory Tax Reserve</span>
+                      <span className="text-[9px] text-amber-600 font-black uppercase tracking-tight mt-0.5">US-INDIA TREATY (18%)</span>
                     </div>
-                    <span className="text-rose-600 font-mono text-xs">-${ledger.tax}</span>
+                    <span className="text-rose-500 font-bold text-xs">-${parseFloat(ledger.tax).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
-                  <div className="pt-4 mt-2 border-t border-gray-200 flex justify-between items-end">
-                    <span className="text-sm font-bold text-emerald-600">Net Contractor Payout</span>
-                    <div className="text-right">
-                      <span className="text-2xl font-black text-emerald-600 font-mono leading-none">${ledger.contractor}</span>
-                    </div>
+                  <div className="pt-6 mt-4 border-t border-gray-100 flex justify-between items-center">
+                    <span className="text-sm font-black text-emerald-600 uppercase tracking-tight">Net Contractor Payout</span>
+                    <span className="text-2xl font-black text-emerald-600 leading-none">${parseFloat(ledger.contractor).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-6 text-center opacity-40">
-                  <AlertCircle className="w-8 h-8 text-gray-400 mb-3" />
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-relaxed">
-                    Enter terms to <br /> view payment breakdown
+                <div className="flex flex-col items-center justify-center py-10 text-center opacity-40">
+                  <AlertCircle className="w-10 h-10 text-gray-300 mb-4" />
+                  <p className="text-[11px] text-gray-400 font-bold uppercase tracking-widest leading-relaxed">
+                    Enter terms to view <br /> financial breakdown
                   </p>
                 </div>
               )}

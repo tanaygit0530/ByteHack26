@@ -92,7 +92,7 @@ const Dashboard = ({ profile, refreshProfile, isC2CView }) => {
         >
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
           <Plus className="w-5 h-5" />
-          {isC2CView ? 'New C2C Deal' : 'New Smart Agreement'}
+          {isC2CView ? 'New B2B Deal' : 'New Smart Agreement'}
         </button>
       </motion.div>
 
@@ -217,7 +217,7 @@ const Dashboard = ({ profile, refreshProfile, isC2CView }) => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <h2 className="text-2xl font-bold text-[#1a1a1a] tracking-tight">
-              {isC2CView ? 'C2C Agreements' : 'Active Agreement List'}
+              {isC2CView ? 'B2B Agreements' : 'Active Agreement List'}
             </h2>
             <span className="px-3 py-1 rounded-full bg-[#867361]/10 border border-[#867361]/20 text-[#867361] text-[10px] font-black uppercase tracking-tighter">Live Sync</span>
           </div>
@@ -263,7 +263,7 @@ const Dashboard = ({ profile, refreshProfile, isC2CView }) => {
             <h3 className="text-3xl font-extrabold text-[#1a1a1a] mb-4">No agreements found</h3>
             <p className="text-gray-500 mb-10 max-w-sm mx-auto text-lg font-medium leading-relaxed">
               {isC2CView
-                ? 'Create your first C2C deal to begin secure transactions.'
+                ? 'Create your first B2B deal to begin secure transactions.'
                 : 'Secure your first smart agreement with programmable trust.'}
             </p>
             <button
