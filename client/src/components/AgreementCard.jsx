@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Clock, CheckCircle2, AlertCircle, ExternalLink, ArrowRight, ShieldCheck, DollarSign, FileText, Lock, Globe } from 'lucide-react';
+import { Clock, CheckCircle2, AlertCircle, ExternalLink, ArrowRight, ShieldCheck, DollarSign, FileText, Lock, Globe, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import ComplianceCertificateModal from './ComplianceCertificateModal';
@@ -305,12 +305,29 @@ const AgreementCard = ({ agreement, currentUserId, index, refreshProfile, isC2CV
         </div>
         {/* Audit Trail & AI Summary */}
         <div className="space-y-4 pt-4 border-t border-gray-100">
-          {agreement.ai_summary && ['WORK_SUBMITTED', 'READY_FOR_RELEASE', 'PAID', 'DISPUTED'].includes(agreement.status) && (
-            <div className="p-4 rounded-2xl bg-[#867361]/5 border border-[#867361]/10 italic text-sm text-[#867361]">
-              <div className="flex items-center gap-2 mb-2 text-[10px] font-black uppercase text-[#867361]">
-                <ShieldCheck className="w-3 h-3" /> AI Verification Summary
+          {(agreement.ai_summary || (agreement.status === 'WORK_SUBMITTED' && (agreement.ai_score === null || agreement.ai_score === undefined))) && (
+            <div className={`p-4 rounded-2xl border italic text-sm ${agreement.ai_summary === 'AI verification failed.' ? 'bg-rose-50 border-rose-100 text-rose-600' : 'bg-[#867361]/5 border-[#867361]/10 text-[#867361]'}`}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2 text-[10px] font-black uppercase">
+                  <ShieldCheck className="w-3 h-3" /> AI Verification Summary
+                </div>
+                {(agreement.ai_score !== null && agreement.ai_score !== undefined) ? (
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border animate-in fade-in zoom-in duration-500 ${agreement.ai_score < 40 ? 'text-rose-600 bg-rose-50 border-rose-100' : 'text-emerald-600 bg-emerald-50 border-emerald-100'}`}>
+                    {agreement.ai_score}% Confidence {agreement.ai_score < 40 && '• HIGH RISK'}
+                  </span>
+                ) : (agreement.status === 'WORK_SUBMITTED' || agreement.status === 'READY_FOR_RELEASE') ? (
+                  <span className="flex items-center gap-1.5 text-[10px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100 animate-pulse">
+                    <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce" />
+                    Analyzing Deliverables...
+                  </span>
+                ) : null}
               </div>
-              "{agreement.ai_summary}"
+              {agreement.ai_summary === 'AI verification failed.' && (
+                <div className="flex items-center gap-2 mb-1 not-italic font-bold text-xs uppercase tracking-tight">
+                  <AlertCircle className="w-3.5 h-3.5" /> Logical Exception Detected
+                </div>
+              )}
+              "{agreement.ai_summary || 'Analyzing repository contents against agreement deliverables...'}"
             </div>
           )}
 
@@ -341,27 +358,39 @@ const AgreementCard = ({ agreement, currentUserId, index, refreshProfile, isC2CV
           {agreement.status === 'AGREEMENT_CREATED' && currentUserId === agreement.receiver_id && (
             <motion.div key="negotiate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-3">
               {isC2CView ? (
-                <div className="grid grid-cols-2 gap-4">
-                  <button
-                    onClick={() => setIsEditing(!isEditing)}
-                    className={`py-4 rounded-2xl font-bold transition-all shadow-sm ${isEditing ? 'bg-amber-50 text-amber-600 border border-amber-100' : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}
-                  >
-                    {isEditing ? 'Cancel Changes' : 'Suggest Adjustments'}
-                  </button>
-                  {isEditing ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-4">
                     <button
-                      onClick={() => handleAction('update')}
-                      disabled={loading}
-                      className="py-4 rounded-2xl bg-[#867361] text-white font-bold hover:bg-[#6f5e4f] transition-all shadow-sm flex items-center justify-center gap-2"
+                      onClick={() => setIsEditing(!isEditing)}
+                      className={`py-4 rounded-2xl font-bold transition-all shadow-sm ${isEditing ? 'bg-amber-50 text-amber-600 border border-amber-100' : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}
                     >
-                      {loading ? 'Saving...' : 'Save & Propose'}
-                      <ArrowRight className="w-4 h-4" />
+                      {isEditing ? 'Cancel Changes' : 'Suggest Adjustments'}
                     </button>
-                  ) : (
+                    {!isEditing && (
+                      <button
+                        onClick={() => handleAction('reject')}
+                        disabled={loading}
+                        className="py-4 rounded-2xl bg-rose-50 text-rose-600 border border-rose-100 font-bold hover:bg-rose-600 hover:text-white transition-all shadow-sm"
+                      >
+                        Reject Terms
+                      </button>
+                    )}
+                    {isEditing && (
+                      <button
+                        onClick={() => handleAction('update')}
+                        disabled={loading}
+                        className="py-4 rounded-2xl bg-[#867361] text-white font-bold hover:bg-[#6f5e4f] transition-all shadow-sm flex items-center justify-center gap-2"
+                      >
+                        {loading ? 'Saving...' : 'Save & Propose'}
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                  {!isEditing && (
                     <button
                       onClick={() => handleAction('accept-receiver')}
                       disabled={loading}
-                      className="py-4 rounded-2xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition-all shadow-sm flex items-center justify-center gap-2"
+                      className="w-full py-4 rounded-2xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition-all shadow-sm flex items-center justify-center gap-2"
                     >
                       <CheckCircle2 className="w-5 h-5" />
                       Accept Terms
@@ -369,14 +398,23 @@ const AgreementCard = ({ agreement, currentUserId, index, refreshProfile, isC2CV
                   )}
                 </div>
               ) : (
-                <button
-                  onClick={() => handleAction('accept-receiver')}
-                  disabled={loading}
-                  className="w-full btn-primary py-4 flex items-center justify-center gap-3 bg-[#6f5e4f]"
-                >
-                  <CheckCircle2 className="w-5 h-5" />
-                  Accept Terms & Start Agreement
-                </button>
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    onClick={() => handleAction('reject')}
+                    disabled={loading}
+                    className="py-4 rounded-2xl bg-rose-50 text-rose-600 border border-rose-100 font-bold hover:bg-rose-600 hover:text-white transition-all shadow-sm"
+                  >
+                    Reject Terms
+                  </button>
+                  <button
+                    onClick={() => handleAction('accept-receiver')}
+                    disabled={loading}
+                    className="py-4 rounded-2xl bg-[#867361] text-white font-bold hover:bg-[#6f5e4f] transition-all shadow-sm flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle2 className="w-5 h-5" />
+                    Accept Terms
+                  </button>
+                </div>
               )}
               {isC2CView && !isEditing && (
                 <p className="text-[10px] text-gray-400 font-bold text-center uppercase tracking-widest">
@@ -388,42 +426,17 @@ const AgreementCard = ({ agreement, currentUserId, index, refreshProfile, isC2CV
 
           {agreement.status === 'AGREEMENT_CREATED' && currentUserId === agreement.payer_id && (
             <motion.div key="client-negotiate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-3">
-              {isC2CView ? (
-                <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <button
-                      onClick={() => handleAction('reject')}
-                      disabled={loading}
-                      className="py-4 rounded-2xl bg-rose-50 text-rose-600 border border-rose-100 font-bold hover:bg-rose-600 hover:text-white transition-all shadow-sm"
-                    >
-                      Reject Deal
-                    </button>
-                    <button
-                      onClick={() => handleAction('fund')}
-                      disabled={loading}
-                      className="py-4 rounded-2xl bg-[#867361] text-white font-bold hover:bg-[#6f5e4f] transition-all shadow-sm flex items-center justify-center gap-2"
-                    >
-                      <DollarSign className="w-4 h-4" />
-                      Accept & Secure Funds
-                    </button>
-                  </div>
-                  <p className="text-[10px] text-gray-400 font-bold text-center uppercase tracking-widest">
-                    Funds will be held in a secure vault until work is delivered.
-                  </p>
-                </>
-              ) : (
-                <div className="w-full py-6 rounded-2xl bg-gray-50 border border-gray-100 flex flex-col items-center justify-center gap-3 text-center">
-                  <div className="p-3 rounded-full bg-amber-50">
-                    <Clock className="w-6 h-6 text-amber-500 animate-spin-slow" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-gray-700">Waiting for Contractor</p>
-                    <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest mt-1">
-                      The agreement is pending review and acceptance by the contractor.
-                    </p>
-                  </div>
+              <div className="w-full py-6 rounded-2xl bg-gray-50 border border-gray-100 flex flex-col items-center justify-center gap-3 text-center">
+                <div className="p-3 rounded-full bg-amber-50">
+                  <Clock className="w-6 h-6 text-amber-500 animate-spin-slow" />
                 </div>
-              )}
+                <div>
+                  <p className="text-sm font-bold text-gray-700">Waiting for Contractor</p>
+                  <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest mt-1">
+                    The agreement is pending review and acceptance by the contractor.
+                  </p>
+                </div>
+              </div>
             </motion.div>
           )}
 
