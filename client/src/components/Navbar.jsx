@@ -63,30 +63,30 @@ const Navbar = ({ profile, onLogout }) => {
   ];
 
   return (
-    <nav className="border-b border-gray-100 bg-white/70 backdrop-blur-xl sticky top-0 z-50">
+    <nav className="glass sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="flex justify-between h-20 items-center">
-          <div className="flex items-center gap-8">
+        <div className="flex justify-between h-24 items-center">
+          <div className="flex items-center gap-12">
             <Link to="/" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 bg-[#867361] rounded-xl flex items-center justify-center shadow-brown20 group-hover:scale-110 transition-transform">
+              <div className="w-11 h-11 bg-[#867361] rounded-2xl flex items-center justify-center shadow-brown10 group-hover:scale-110 transition-transform">
                 <span className="text-white font-black text-xl">N</span>
               </div>
-              <span className="text-2xl font-bold text-[#1a1a1a] tracking-tighter">Nexus</span>
+              <span className="text-2xl font-serif font-bold text-[#1a1a1a] tracking-tight">Nexus</span>
             </Link>
 
-            <div className="hidden lg:flex items-center gap-1">
+            <div className="hidden lg:flex items-center gap-8">
               {navLinks.map((link) => (
                 <Link
                   key={link.path}
                   to={link.path}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all relative ${location.pathname === link.path ? 'text-[#867361]' : 'text-gray-500 hover:text-[#1a1a1a] hover:bg-gray-50'
+                  className={`text-sm font-bold uppercase tracking-widest transition-all relative py-2 ${location.pathname === link.path ? 'text-[#867361]' : 'text-gray-400 hover:text-[#1a1a1a]'
                     }`}
                 >
                   {link.name}
                   {location.pathname === link.path && (
                     <motion.div
                       layoutId="nav-underline"
-                      className="absolute bottom-0 left-2 right-2 h-0.5 bg-[#867361]"
+                      className="absolute -bottom-1 left-0 right-0 h-0.5 bg-[#867361]"
                     />
                   )}
                 </Link>
@@ -94,49 +94,47 @@ const Navbar = ({ profile, onLogout }) => {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center gap-4 p-1.5 bg-gray-50 rounded-xl border border-gray-100 shadow-sm">
-              <div className="flex items-center gap-3 px-3 py-1.5">
-                <div className="p-1.5 rounded-lg bg-[#867361]/10 text-[#867361]">
-                  <Wallet className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none mb-1">Balance</p>
-                  <p className="text-sm font-bold text-[#1a1a1a] leading-none">
+          <div className="flex items-center gap-6">
+            <div className="hidden md:flex items-center gap-0">
+              {/* Wallet Section */}
+              <div className="vertical-accent py-1 pr-8 mr-8">
+                <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mb-1">Available Funds</p>
+                <div className="flex items-center gap-3">
+                  <p className="text-lg font-bold text-[#1a1a1a]">
                     ${wallet?.balance?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
                   </p>
+                  <button
+                    onClick={handleAddFunds}
+                    disabled={loading}
+                    className="w-6 h-6 rounded-lg bg-[#867361]/10 text-[#867361] hover:bg-[#867361] hover:text-white transition-all flex items-center justify-center"
+                  >
+                    {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                  </button>
                 </div>
-                <button
-                  onClick={handleAddFunds}
-                  disabled={loading}
-                  className="ml-2 p-1.5 rounded-lg bg-[#867361] hover:bg-[#6f5e4f] text-white transition-all disabled:opacity-50"
-                >
-                  {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-                </button>
               </div>
-              <div className="w-px h-8 bg-gray-200"></div>
-              <div className="flex items-center gap-3 px-3 py-1.5">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#867361] to-[#9d9286] flex items-center justify-center text-xs font-bold text-white uppercase shadow-md">
-                  {profile?.full_name?.charAt(0) || 'U'}
-                </div>
-                <div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none mb-1">
-                    {profile?.role === 'admin' ? 'System Arbiter' : 'Verified Member'}
-                  </p>
-                  <p className="text-sm font-bold text-[#1a1a1a] leading-none truncate max-w-[100px]">
-                    {profile?.full_name}
-                  </p>
+
+              {/* Profile Section */}
+              <div className="vertical-accent py-1 group cursor-pointer">
+                <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mb-1">
+                  {profile?.role === 'admin' ? 'System Arbiter' : 'Certified Account'}
+                </p>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-[#867361] flex items-center justify-center text-[10px] font-black text-white shadow-sm">
+                    {profile?.full_name?.charAt(0) || 'U'}
+                  </div>
+                  <span className="text-sm font-bold text-[#1a1a1a]">{profile?.full_name}</span>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <button className="p-2.5 text-gray-400 hover:text-[#1a1a1a] hover:bg-gray-100 rounded-xl transition-all border border-transparent">
+            <div className="flex items-center gap-2 border-l border-gray-100 pl-6">
+              <button className="p-2.5 text-gray-400 hover:text-[#1a1a1a] transition-all relative">
                 <Bell className="w-5 h-5" />
+                <div className="absolute top-2 right-2 w-2 h-2 bg-[#867361] rounded-full border-2 border-white shadow-[0_0_8px_rgba(134,115,97,0.3)]" />
               </button>
               <button
                 onClick={onLogout}
-                className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all border border-transparent"
+                className="p-2.5 text-gray-400 hover:text-rose-600 transition-all"
                 title="Logout"
               >
                 <LogOut className="w-5 h-5" />

@@ -116,23 +116,23 @@ const AgreementCard = ({ agreement, currentUserId, index, refreshProfile, isC2CV
             </div>
             {isEditing ? (
               <input
-                className="text-2xl font-extrabold text-[#1a1a1a] tracking-tight leading-tight w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 outline-none focus:border-[#867361]"
+                className="text-2xl font-serif font-bold text-[#1a1a1a] tracking-tight leading-tight w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 outline-none focus:border-[#867361]"
                 value={editData.title}
                 onChange={(e) => setEditData({ ...editData, title: e.target.value })}
               />
             ) : (
-              <h3 className="text-2xl font-extrabold text-[#1a1a1a] tracking-tight leading-tight">
+              <h3 className="text-3xl font-serif font-bold text-[#1a1a1a] tracking-tight leading-tight">
                 {agreement.title}
               </h3>
             )}
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 border border-gray-100">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#867361] animate-pulse shadow-[0_0_8px_rgba(134,115,97,0.4)]" />
+              <div className="vertical-accent py-1">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">Originator</span>
                 <span className="text-xs font-bold text-gray-600">{agreement.payer?.full_name}</span>
               </div>
-              <ArrowRight className="w-4 h-4 text-gray-300" />
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 border border-gray-100 relative group/member">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#9d9286]" />
+              <div className="mx-4 text-gray-200">|</div>
+              <div className="vertical-accent py-1 relative group/member">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">Counterparty</span>
                 <span className="text-xs font-bold text-gray-600">{agreement.receiver?.full_name}</span>
 
                 {/* Contractor Trust Tooltip/Badge */}

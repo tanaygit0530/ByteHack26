@@ -96,141 +96,319 @@ const Auth = ({ onLogin }) => {
             exit={{ opacity: 0 }}
             className="pt-32 pb-20 px-6"
           >
-            <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
+            <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
               <div>
                 <motion.div
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
                 >
-                  <span className="inline-block px-4 py-1.5 rounded-full bg-[#867361]/10 border border-[#867361]/20 text-[#867361] text-xs font-bold uppercase tracking-widest mb-6">
-                    Professional Payment Protection
+                  <span className="inline-block px-4 py-1.5 rounded-full bg-[#867361]/10 border border-[#867361]/20 text-[#867361] text-[10px] font-black uppercase tracking-[0.3em] mb-8">
+                    Institutional Trust Protocol
                   </span>
-                  <h1 className="text-5xl lg:text-7xl font-extrabold text-[#1a1a1a] leading-[1.1] mb-6 tracking-tighter">
+                  <h1 className="text-6xl lg:text-8xl font-serif text-[#1a1a1a] leading-[1.05] mb-8 tracking-tight">
                     Never buy or sell <br />
-                    <span className="gradient-text italic">without Nexus.</span>
+                    <span className="italic secondary-gradient-text opacity-90">without Nexus.</span>
                   </h1>
-                  <p className="text-xl text-gray-600 max-w-xl mb-10 leading-relaxed font-medium">
-                    The world's easiest cross-border payment system. Secure your deals, services, and payments with guaranteed trust.
+                  <p className="text-xl text-gray-500 max-w-xl mb-12 leading-relaxed font-medium">
+                    The world's premier secure settlement layer. Orchestrating cross-border payments with guaranteed cryptographic trust.
                   </p>
 
-                  <div className="flex flex-wrap gap-4">
+                  <div className="flex flex-wrap gap-6 mb-16">
                     <button
                       onClick={() => setView('signup')}
-                      className="group btn-primary px-8 py-4 text-base flex items-center gap-2"
+                      className="group btn-primary"
                     >
                       Start Smart Agreement
                       <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                     </button>
-                    <button className="btn-secondary px-8 py-4 text-base flex items-center gap-2 border-[#d4d4d4]">
-                      <Play className="w-5 h-5 fill-current" />
-                      Watch Demo
+                    <button className="btn-secondary group">
+                      <Play className="w-5 h-5 fill-current text-[#867361] transition-transform group-hover:scale-110" />
+                      Watch Platform Demo
                     </button>
                   </div>
 
-                  <div className="mt-12 flex items-center gap-6 opacity-40 grayscale">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck className="w-5 h-5" />
-                      <span className="text-sm font-bold">SOC2 Compliant</span>
+                  <div className="flex items-center gap-10 border-t border-gray-100 pt-10">
+                    <div className="vertical-accent">
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Compliance</p>
+                      <p className="text-sm font-bold text-[#1a1a1a]">SOC2 Type II</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Globe2 className="w-5 h-5" />
-                      <span className="text-sm font-bold">Global Coverage</span>
+                    <div className="vertical-accent">
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Network</p>
+                      <p className="text-sm font-bold text-[#1a1a1a]">Global Vaults</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Server className="w-5 h-5" />
-                      <span className="text-sm font-bold">Secure History</span>
+                    <div className="vertical-accent">
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Security</p>
+                      <p className="text-sm font-bold text-[#1a1a1a]">256-bit TLS</p>
                     </div>
                   </div>
                 </motion.div>
               </div>
 
-              {/* Floating Dashboard Card Mockup - Light Themed */}
+              {/* Floating Dashboard Card Mockup - Premium Fintech Style */}
               <motion.div
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4 }}
-                className="relative hidden lg:block"
+                initial={{ opacity: 0, scale: 0.9, rotateY: 10 }}
+                animate={{ opacity: 1, scale: 1, rotateY: 0 }}
+                transition={{ duration: 1.2, delay: 0.2 }}
+                className="relative hidden lg:block perspective-1000"
               >
-                <div className="absolute inset-0 bg-[#867361]/10 blur-[100px] rounded-full animate-pulse" />
-                <div className="relative glass-card rounded-3xl p-8 border border-gray-200 shadow-xl overflow-hidden min-h-[500px] bg-white">
-                  <div className="flex justify-between items-center mb-10">
+                <div className="absolute inset-0 bg-[#867361]/5 blur-[120px] rounded-full animate-pulse" />
+                <div className="relative glass-card rounded-[40px] p-10 bg-white/90 backdrop-blur-sm border border-white group">
+                  <div className="flex justify-between items-center mb-12">
                     <div>
-                      <h3 className="text-xl font-bold text-[#1a1a1a]">Active Deals</h3>
-                      <p className="text-sm text-gray-500 font-medium">Total volume: $42,500.00</p>
+                      <h3 className="text-2xl font-serif font-bold text-[#1a1a1a]">Secure Operations</h3>
+                      <p className="text-sm text-gray-400 font-medium">Active volume: $42,500.00</p>
                     </div>
-                    <div className="flex -space-x-3">
-                      {[1, 2, 3].map(i => (
-                        <div key={i} className="w-10 h-10 rounded-full border-2 border-white bg-gradient-to-br from-[#867361] to-[#9d9286] flex items-center justify-center text-xs font-bold text-white shadow-lg">
-                          U{i}
-                        </div>
-                      ))}
+                    <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100">
+                      <Zap className="w-6 h-6 text-[#867361]" />
                     </div>
                   </div>
 
-                  <div className="space-y-4">
+                  <div className="space-y-5">
                     {[
-                      { icon: Briefcase, title: 'Web Development Project', amount: '$4,500', status: 'Funds Secured', color: '867361' },
-                      { icon: Globe, title: 'Domain Transfer (.ai)', amount: '$12,000', status: 'Validation', color: '9d9286' },
-                      { icon: CreditCard, title: 'SaaS Acquisition', amount: '$26,000', status: 'Payment Due', color: '1a1a1a' },
+                      { icon: Briefcase, title: 'Web Development Project', amount: '$4,500', status: 'Funds Secured' },
+                      { icon: Globe, title: 'Domain Transfer (.ai)', amount: '$12,000', status: 'Validation' },
+                      { icon: CreditCard, title: 'SaaS Acquisition', amount: '$26,000', status: 'Payment Due' },
                     ].map((item, idx) => (
                       <motion.div
                         key={idx}
-                        whileHover={{ x: 10 }}
-                        className="p-4 rounded-2xl bg-gray-50 border border-gray-100 flex items-center gap-4 cursor-default shadow-sm"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.6 + (idx * 0.1) }}
+                        className="p-5 rounded-3xl bg-white border border-gray-100 flex items-center gap-5 transition-all hover:bg-gray-50 hover:shadow-md cursor-default"
                       >
-                        <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-[#867361] shadow-inner">
-                          <item.icon className="w-6 h-6" />
+                        <div className="w-14 h-14 rounded-2xl bg-[#867361]/5 flex items-center justify-center text-[#867361]">
+                          <item.icon className="w-7 h-7" />
                         </div>
                         <div className="flex-1">
-                          <h4 className="font-bold text-[#1a1a1a] text-sm">{item.title}</h4>
-                          <p className="text-xs text-gray-500 font-medium">{item.status}</p>
+                          <h4 className="font-bold text-[#1a1a1a] text-base">{item.title}</h4>
+                          <p className="text-xs text-gray-400 font-medium">{item.status}</p>
                         </div>
                         <div className="text-right">
-                          <p className="font-extrabold text-[#1a1a1a] text-sm">{item.amount}</p>
-                          <p className="text-[10px] text-emerald-600 uppercase font-bold tracking-tighter">Verified</p>
+                          <p className="font-black text-[#1a1a1a] text-base">{item.amount}</p>
+                          <div className="flex items-center gap-1.5 justify-end">
+                            <ShieldCheck className="w-3 h-3 text-emerald-500" />
+                            <p className="text-[9px] text-emerald-600 uppercase font-black tracking-widest">Verified</p>
+                          </div>
                         </div>
                       </motion.div>
                     ))}
                   </div>
 
-                  {/* Decorative Elements */}
-                  <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-[#867361]/5 blur-3xl" />
+                  {/* Decorative Handlers */}
+                  <div className="mt-10 pt-10 border-t border-gray-50 flex justify-between items-center text-[10px] text-gray-300 font-black uppercase tracking-[0.3em]">
+                    <span>© Nexus Protocol 2026</span>
+                    <span className="flex items-center gap-2 italic"> <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" /> Sync Live</span>
+                  </div>
                 </div>
               </motion.div>
             </div>
 
-            {/* How it Works Section */}
-            <section id="how-it-works" className="mt-40">
-              <div className="text-center mb-16">
-                <h2 className="text-3xl lg:text-4xl font-bold text-[#1a1a1a] mb-4">How Nexus Protects You</h2>
-                <p className="text-gray-600 max-w-2xl mx-auto font-medium">Five simple steps to secure cross-border transactions.</p>
+            {/* Scroll Indicator */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0, 1, 0] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="flex flex-col items-center gap-2 mt-20 text-gray-400 overflow-hidden h-20"
+            >
+              <span className="text-[10px] font-black uppercase tracking-[0.4em]">Scroll</span>
+              <div className="w-px h-12 bg-gray-200 relative overflow-hidden">
+                <motion.div
+                  animate={{ y: [0, 48, 0] }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                  className="w-full h-1/2 bg-[#867361]"
+                />
+              </div>
+            </motion.div>
+
+            {/* Protocol Intelligence - Filling the gap with dynamic value */}
+            <section className="mt-32 max-w-7xl mx-auto px-6">
+              <div className="glass-card rounded-[48px] p-16 relative overflow-hidden bg-white/40 backdrop-blur-md border border-white/60">
+                <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
+                  <svg width="400" height="400" viewBox="0 0 400 400" fill="none">
+                    <circle cx="200" cy="200" r="150" stroke="#867361" strokeWidth="1" strokeDasharray="10 10" />
+                    <path d="M50 200 L350 200 M200 50 L200 350" stroke="#867361" strokeWidth="1" />
+                    <path d="M100 100 L300 300 M300 100 L100 300" stroke="#867361" strokeWidth="1" />
+                  </svg>
+                </div>
+
+                <div className="relative z-10 grid lg:grid-cols-2 gap-20 items-center">
+                  <div>
+                    <div className="inline-block px-4 py-1.5 rounded-full bg-[#867361]/10 text-[#867361] text-[10px] font-black uppercase tracking-[0.3em] mb-8">
+                      Protocol Intelligence
+                    </div>
+                    <h2 className="text-5xl font-serif text-[#1a1a1a] mb-8 leading-tight">
+                      Orchestrating <br />
+                      <span className="italic secondary-gradient-text opacity-90 text-6xl">Global Interaction.</span>
+                    </h2>
+                    <p className="text-lg text-gray-500 font-medium leading-relaxed max-w-md">
+                      Our system calculates trust in real-time using a proprietary multi-factor mathematical model that monitors every handshake.
+                    </p>
+
+                    <div className="mt-12 p-8 rounded-[32px] bg-[#4a3e35] text-white overflow-hidden relative shadow-2xl shadow-brown-900/20 border border-white/5">
+                      <div className="flex items-center justify-between mb-8">
+                        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-brown-200 opacity-60">Live Trust Index</span>
+                        <div className="flex items-center gap-2 px-2 py-1 rounded-full bg-emerald-500/10">
+                          <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.4)]" />
+                          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400">Nominal</span>
+                        </div>
+                      </div>
+                      <div className="text-5xl font-serif mb-3 tracking-tight">99.982%</div>
+                      <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          whileInView={{ width: '99.982%' }}
+                          transition={{ duration: 2.5, ease: "easeOut" }}
+                          className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400"
+                        />
+                      </div>
+                      <div className="mt-6 flex justify-between items-center">
+                        <p className="text-[10px] text-brown-300/40 font-mono tracking-tighter italic">
+                          P(Success | Escrow) = 1 - (R_risk / C)
+                        </p>
+                        <div className="text-[10px] text-emerald-400/60 font-black uppercase tracking-widest">A++ Rated</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-8">
+                    {[
+                      { label: "B2B Interactions", value: "142,581", sub: "+12.4% vs LY" },
+                      { label: "Nodes Verified", value: "892", sub: "Global Cluster" },
+                      { label: "Tax Reserves", value: "$84.2M", sub: "Escrow Locked" },
+                      { label: "API Handshakes", value: "2.1M", sub: "Last 24h" },
+                    ].map((stat, i) => (
+                      <motion.div
+                        key={i}
+                        whileInView={{ opacity: 1, scale: 1 }}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        className="p-8 rounded-[32px] bg-white border border-gray-100 hover:border-[#867361]/20 transition-all group"
+                      >
+                        <div className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 group-hover:text-[#867361] transition-colors">{stat.label}</div>
+                        <div className="text-3xl font-serif font-bold text-[#1a1a1a] mb-2">{stat.value}</div>
+                        <div className="text-[10px] text-emerald-600 font-black uppercase tracking-widest">{stat.sub}</div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </section>
+            <section id="how-it-works" className="mt-32 relative">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[#867361]/3 blur-[120px] rounded-full pointer-events-none" />
+
+              <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-20 items-start mb-32">
+                <div className="md:w-1/2">
+                  <div className="inline-block px-4 py-1.5 rounded-full bg-[#867361]/10 text-[#867361] text-[10px] font-black uppercase tracking-[0.3em] mb-8">
+                    Process Flow
+                  </div>
+                  <h2 className="text-5xl font-serif text-[#1a1a1a] mb-8 leading-tight">
+                    Engineered for <br /><span className="italic secondary-gradient-text opacity-90">Absolute Security.</span>
+                  </h2>
+                </div>
+                <div className="md:w-1/2 pt-12">
+                  <p className="text-xl text-gray-500 leading-relaxed font-medium">
+                    We leverage the best of cryptographic escrow and AI-verification to help clients and contractors operate with total platform-guaranteed trust.
+                  </p>
+                </div>
               </div>
 
-              <div className="grid md:grid-cols-5 gap-6 max-w-7xl mx-auto">
+              <div className="grid md:grid-cols-5 gap-0 max-w-7xl mx-auto border-t border-gray-100">
                 {[
-                  { step: 1, icon: User, text: "Client & Contractor agree terms", title: "Agreement" },
-                  { step: 2, icon: CreditCard, text: "Client deposits funds securely", title: "Funding" },
-                  { step: 3, icon: Briefcase, text: "Contractor delivers the work", title: "Delivery" },
-                  { step: 4, icon: CheckCircle2, text: "Client approves the work", title: "Approval" },
-                  { step: 5, icon: LockIcon, text: "Nexus system releases funds", title: "Release" },
+                  { step: "01", icon: User, text: "Define terms and deliverables manually or with AI guidance.", title: "Handshake" },
+                  { step: "02", icon: CreditCard, text: "Funds are deposited into an encrypted Nexus vault.", title: "Funding" },
+                  { step: "03", icon: Briefcase, text: "Real-time delivery with GitHub sync and file analysis.", title: "Operations" },
+                  { step: "04", icon: CheckCircle2, text: "AI verification scores and client multi-sig approval.", title: "Resolution" },
+                  { step: "05", icon: LockIcon, text: "Instant T+0 settlement and automated tax reserve.", title: "Settlement" },
                 ].map((item, idx) => (
-                  <div key={idx} className="relative group p-6 rounded-[24px] glass-card hover:border-[#867361]/40 transition-all text-center">
-                    <div className="absolute -top-3 -left-3 w-8 h-8 rounded-full bg-[#867361] text-white font-bold flex items-center justify-center text-xs">
-                      {item.step}
+                  <motion.div
+                    key={idx}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, y: 30 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: idx * 0.1 }}
+                    className="relative p-10 border-b md:border-b-0 md:border-r border-gray-100 group hover:bg-[#867361]/5 transition-all"
+                  >
+                    <div className="text-[10px] font-black text-[#867361]/40 mb-10 group-hover:text-[#867361] transition-colors">{item.step}</div>
+                    <div className="w-12 h-12 mb-8 rounded-2xl bg-gray-50 flex items-center justify-center text-[#867361] group-hover:bg-[#867361] group-hover:text-white transition-all shadow-sm">
+                      <item.icon className="w-6 h-6" />
                     </div>
-                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#867361]/10 flex items-center justify-center text-[#867361] group-hover:scale-110 transition-transform">
-                      <item.icon className="w-8 h-8" />
-                    </div>
-                    <h3 className="font-bold text-[#1a1a1a] mb-2">{item.title}</h3>
-                    <p className="text-xs text-gray-500 font-medium leading-relaxed">{item.text}</p>
-                    {idx < 4 && (
-                      <div className="hidden lg:block absolute top-1/2 -right-4 translate-y-[-50%] text-gray-300">
-                        <ArrowRight className="w-4 h-4" />
-                      </div>
-                    )}
-                  </div>
+                    <h3 className="text-lg font-serif font-bold text-[#1a1a1a] mb-4">{item.title}</h3>
+                    <p className="text-sm text-gray-500 font-medium leading-relaxed group-hover:text-gray-700 transition-colors">{item.text}</p>
+                  </motion.div>
                 ))}
+              </div>
+            </section>
+
+            {/* Tagline Section - Bridging the gap */}
+            <section className="mt-20 py-24 bg-[#867361]/5 border-y border-gray-100/50 overflow-hidden">
+              <div className="max-w-7xl mx-auto px-6 text-center relative">
+                <motion.div
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  viewport={{ once: true }}
+                  className="relative z-10"
+                >
+                  <p className="text-[10px] font-black text-[#867361] uppercase tracking-[0.5em] mb-12">The Nexus Mandate</p>
+                  <h2 className="text-6xl md:text-8xl font-serif text-[#1a1a1a] leading-tight mb-8">
+                    Building trust <br />
+                    <span className="italic secondary-gradient-text opacity-90">through automation.</span>
+                  </h2>
+                  <div className="flex justify-center gap-12 mt-16">
+                    <div className="w-12 h-px bg-gray-200 self-center" />
+                    <p className="text-sm font-black text-gray-400 uppercase tracking-[0.3em]">Institutional Grade</p>
+                    <div className="w-12 h-px bg-gray-200 self-center" />
+                  </div>
+                </motion.div>
+
+                {/* Decorative faint math elements */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[20vw] font-serif text-[#867361]/3 pointer-events-none select-none italic">
+                  Trust
+                </div>
+              </div>
+            </section>
+
+            {/* Global Impact Section - JPMC Inspired */}
+            <section className="mt-20 max-w-7xl mx-auto pt-32 pb-40">
+              <div className="grid md:grid-cols-2 gap-32 items-center">
+                <motion.div
+                  whileInView={{ opacity: 1, x: 0 }}
+                  initial={{ opacity: 0, x: -30 }}
+                  viewport={{ once: true }}
+                >
+                  <div className="inline-block px-4 py-1.5 rounded-full bg-[#867361]/10 text-[#867361] text-[10px] font-black uppercase tracking-[0.3em] mb-8">
+                    Institutional Capacity
+                  </div>
+                  <h2 className="text-5xl lg:text-6xl font-serif text-[#1a1a1a] mb-10 leading-tight">
+                    Moving at the speed of <br /><span className="italic secondary-gradient-text opacity-90">modern commerce.</span>
+                  </h2>
+                  <p className="text-xl text-gray-500 font-medium leading-relaxed max-w-md">
+                    Nexus isn't just a payment tool; it's a financial orchestration layer designed to eliminate counterparty risk in real-time.
+                  </p>
+                  <button className="mt-12 text-[#867361] font-bold text-sm uppercase tracking-widest flex items-center gap-2 group">
+                    Explore our communities <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                </motion.div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-16 gap-x-12">
+                  {[
+                    { label: "Protocol Capacity", value: "$4.2B+" },
+                    { label: "Active Jurisdictions", value: "140+" },
+                    { label: "Fraud Incidents", value: "0.0%" },
+                    { label: "Settlement Time", value: "T+0" },
+                  ].map((stat, i) => (
+                    <motion.div
+                      key={i}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      initial={{ opacity: 0, y: 20 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: i * 0.1 }}
+                      className="vertical-accent"
+                    >
+                      <h4 className="text-4xl lg:text-5xl font-serif font-bold text-[#1a1a1a] mb-3">{stat.value}</h4>
+                      <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em]">{stat.label}</p>
+                    </motion.div>
+                  ))}
+                </div>
               </div>
             </section>
           </motion.div>
